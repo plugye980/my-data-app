@@ -87,6 +87,28 @@ st.markdown(
         }
         .fade-in { animation: fadeSlideUp 0.6s ease both; }
 
+        /* 스크롤에 따른 애니메이션 — 아래로 스크롤해서 요소가 화면에 들어올 때
+           서서히 떠오르며 나타납니다. 이 기능(scroll-driven animation)을 지원하지
+           않는 브라우저에서는 페이지가 열리자마자 한 번 나타나는 것으로 자연스럽게
+           대체됩니다. */
+        @keyframes revealUp {
+            from { opacity: 0; transform: translateY(26px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(26px);
+            animation: revealUp 0.6s ease forwards;
+            animation-delay: 0.05s;
+        }
+        @supports (animation-timeline: view()) {
+            .scroll-reveal {
+                animation: revealUp linear both;
+                animation-timeline: view();
+                animation-range: entry 0% cover 40%;
+            }
+        }
+
         /* 전체 글꼴에 살짝 자간을 주어 차분하고 모던한 인상을 만듭니다. */
         h1, h2, h3, h4, p, span, div, label { letter-spacing: 0.01em; }
 
@@ -161,18 +183,25 @@ st.markdown(
             clip-path: polygon(0 0, 100% 0, 100% 100%, 6% 100%, 0 90%);
             box-shadow: 0 6px 18px rgba(79, 163, 207, 0.14);
         }
-        .kpi-card.card-2 {
+        /* 작은 카드 두 장에는 아주 옅은 사선 결을 얹어 대표 카드(대리석 결)와
+           다른 질감을 줍니다 — 반복되는 선 무늬. */
+        .kpi-card.card-2, .kpi-card.card-3 {
             min-height: 118px;
+            background:
+                repeating-linear-gradient(124deg, rgba(79, 163, 207, 0.05) 0px, rgba(79, 163, 207, 0.05) 1px, transparent 1px, transparent 9px),
+                linear-gradient(155deg, #ffffff 0%, #eff8fb 100%);
+        }
+        .kpi-card.card-2 {
             clip-path: polygon(0 9%, 90% 0, 100% 0, 100% 100%, 0 100%);
         }
         .kpi-card.card-3 {
-            min-height: 118px;
             clip-path: polygon(0 0, 100% 0, 100% 82%, 90% 100%, 0 100%);
         }
 
         .kpi-card::before {
             content: "";
             position: absolute;
+            z-index: 0;
             width: 160%;
             height: 1px;
             background: linear-gradient(90deg, transparent, #4fa3cf88 45%, #4fa3cf88 55%, transparent);
@@ -180,8 +209,22 @@ st.markdown(
             left: -30%;
             transform: rotate(-9deg);
         }
-        .kpi-label {
+        /* 대표 카드에만 얹는 대리석 물결 결 — 아주 옅게, 은은하게만 보이도록 합니다. */
+        .kpi-card.card-hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.09;
+            mix-blend-mode: multiply;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='m'><feTurbulence type='turbulence' baseFrequency='0.012 0.03' numOctaves='3' seed='7'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23m)'/></svg>");
+        }
+        .kpi-label, .kpi-value, .kpi-unit {
             position: relative;
+            z-index: 1;
+        }
+        .kpi-label {
             color: #545b66;
             font-size: 0.78rem;
             text-transform: uppercase;
@@ -189,7 +232,6 @@ st.markdown(
             margin-bottom: 0.55rem;
         }
         .kpi-value {
-            position: relative;
             color: #182330;
             font-size: 1.9rem;
             font-weight: 700;
@@ -242,6 +284,8 @@ st.markdown(
             font-weight: 700;
             padding: 0.6rem 0.9rem;
             border-bottom: 1px solid #bfe0ee;
+            /* 자를 대듯 아주 옅게 반복되는 세로선 — 표 머리글에만 살짝. */
+            background-image: repeating-linear-gradient(90deg, rgba(47, 127, 174, 0.07) 0px, rgba(47, 127, 174, 0.07) 1px, transparent 1px, transparent 40px);
         }
         .rank-table thead th.num { text-align: right; }
         .rank-table tbody td {
@@ -251,7 +295,6 @@ st.markdown(
         }
         .rank-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
         .rank-table tbody tr {
-            animation: fadeSlideUp 0.5s ease both;
             transition: background-color 0.2s ease;
         }
         .rank-table tbody tr:hover { background-color: #f2f9fc; }
@@ -262,7 +305,10 @@ st.markdown(
         .guide-box {
             position: relative;
             padding: 1.3rem 1.4rem;
-            background: linear-gradient(160deg, #f3f9fc 0%, #e9f3f8 100%);
+            /* 옅은 사선 결(반복되는 선 무늬)을 바탕 위에 살짝 얹었습니다. */
+            background:
+                repeating-linear-gradient(135deg, rgba(79, 163, 207, 0.05) 0px, rgba(79, 163, 207, 0.05) 1px, transparent 1px, transparent 9px),
+                linear-gradient(160deg, #f3f9fc 0%, #e9f3f8 100%);
             border: 1px solid #cfe3ee;
             border-left: 3px solid #4fa3cf;
             clip-path: polygon(0 0, 96% 0, 100% 14%, 100% 100%, 0 100%);
@@ -451,7 +497,7 @@ for col, card_class, label, value, unit in card_specs:
     with col:
         st.markdown(
             f"""
-            <div class="kpi-card {card_class}">
+            <div class="kpi-card {card_class} scroll-reveal">
                 <div class="kpi-label">{html.escape(label)}</div>
                 <div class="kpi-value">{value:,}<span class="kpi-unit">{html.escape(unit)}</span></div>
             </div>
@@ -459,14 +505,14 @@ for col, card_class, label, value, unit in card_specs:
             unsafe_allow_html=True,
         )
 
-st.markdown('<div class="crack-divider"></div>', unsafe_allow_html=True)
+st.markdown('<div class="crack-divider scroll-reveal"></div>', unsafe_allow_html=True)
 
 
 # ────────────────────────────────────────────────────────────────
 # 10. 관객수 상위 5편 — 막대그래프
 #     화려한 배경이나 테두리 없이, 눈금선만으로 값을 읽을 수 있도록 최소한으로 그립니다.
 # ────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-label fade-in">관객수 상위 5편</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label scroll-reveal">관객수 상위 5편</div>', unsafe_allow_html=True)
 
 top5 = df.sort_values("관객수", ascending=False).head(5).sort_values("관객수", ascending=True)
 
@@ -499,7 +545,7 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-st.markdown('<div class="crack-divider"></div>', unsafe_allow_html=True)
+st.markdown('<div class="crack-divider scroll-reveal"></div>', unsafe_allow_html=True)
 
 
 # ────────────────────────────────────────────────────────────────
@@ -508,7 +554,7 @@ st.markdown('<div class="crack-divider"></div>', unsafe_allow_html=True)
 #     어두운 모드를 선호하면 이 화면의 밝은 톤과 상관없이 검게 나올 수 있습니다.
 #     그래서 직접 HTML 표를 만들어, 색이 항상 이 페이지 디자인을 따르게 했습니다.
 # ────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-label fade-in">전체 순위</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label scroll-reveal">전체 순위</div>', unsafe_allow_html=True)
 
 
 def build_rank_table_html(table_df: pd.DataFrame) -> str:
@@ -520,9 +566,8 @@ def build_rank_table_html(table_df: pd.DataFrame) -> str:
     )
 
     body_rows = []
-    for row_index, row in enumerate(table_df.itertuples(index=False)):
+    for row in table_df.itertuples(index=False):
         row_class = "rank-first" if row.순위 == 1 else ""
-        animation_delay = min(row_index * 0.05, 0.4)
         cells = (
             f'<td class="num">{row.순위}</td>'
             f'<td>{html.escape(row.영화명)}</td>'
@@ -531,12 +576,10 @@ def build_rank_table_html(table_df: pd.DataFrame) -> str:
             f'<td class="num">{row.누적관객:,}</td>'
             f'<td class="num">{row.스크린수:,}</td>'
         )
-        body_rows.append(
-            f'<tr class="{row_class}" style="animation-delay:{animation_delay:.2f}s">{cells}</tr>'
-        )
+        body_rows.append(f'<tr class="{row_class}">{cells}</tr>')
 
     return (
-        '<div class="rank-table-wrap fade-in"><table class="rank-table">'
+        '<div class="rank-table-wrap scroll-reveal"><table class="rank-table">'
         f"<thead><tr>{header_cells}</tr></thead>"
         f'<tbody>{"".join(body_rows)}</tbody>'
         "</table></div>"
