@@ -183,12 +183,12 @@ st.markdown(
             clip-path: polygon(0 0, 100% 0, 100% 100%, 6% 100%, 0 90%);
             box-shadow: 0 6px 18px rgba(79, 163, 207, 0.14);
         }
-        /* 작은 카드 두 장에는 아주 옅은 사선 결을 얹어 대표 카드(대리석 결)와
-           다른 질감을 줍니다 — 반복되는 선 무늬. */
+        /* 작은 카드 두 장에는 SF 패널에서 흔히 보이는 잔물결(웨이브) 결을 아주 옅게
+           얹어, 대표 카드의 링 문양과 짝을 이루는 질감을 줍니다. */
         .kpi-card.card-2, .kpi-card.card-3 {
             min-height: 118px;
             background:
-                repeating-linear-gradient(124deg, rgba(79, 163, 207, 0.05) 0px, rgba(79, 163, 207, 0.05) 1px, transparent 1px, transparent 9px),
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='26'><path d='M-6 13 Q 6 1 18 13 T 42 13 T 66 13 T 90 13 T 114 13' fill='none' stroke='%234fa3cf' stroke-width='0.8' stroke-opacity='0.14'/></svg>"),
                 linear-gradient(155deg, #ffffff 0%, #eff8fb 100%);
         }
         .kpi-card.card-2 {
@@ -209,16 +209,17 @@ st.markdown(
             left: -30%;
             transform: rotate(-9deg);
         }
-        /* 대표 카드에만 얹는 대리석 물결 결 — 아주 옅게, 은은하게만 보이도록 합니다. */
+        /* 대표 카드 한쪽 구석에 동심원(포털/홀로그램) 문양을 아주 옅게 얹었습니다.
+           참고 이미지 속 원형 구조물에서 따온 장식으로, 튀지 않도록 카드 모서리
+           뒤에서 살짝만 비치게 했습니다. */
         .kpi-card.card-hero::after {
             content: "";
             position: absolute;
             inset: 0;
             z-index: 0;
             pointer-events: none;
-            opacity: 0.09;
-            mix-blend-mode: multiply;
-            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='m'><feTurbulence type='turbulence' baseFrequency='0.012 0.03' numOctaves='3' seed='7'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23m)'/></svg>");
+            background-image: repeating-radial-gradient(circle at 88% 14%, rgba(79, 163, 207, 0.4) 0px, rgba(79, 163, 207, 0.4) 1.4px, transparent 1.4px, transparent 10px);
+            mask-image: radial-gradient(circle at 88% 14%, #000 0%, transparent 70%);
         }
         .kpi-label, .kpi-value, .kpi-unit {
             position: relative;
@@ -244,6 +245,26 @@ st.markdown(
             margin-left: 0.2rem;
         }
 
+        /* 참고 이미지의 원형 포털/홀로그램 구조물을 오마주한 동심원 문양입니다.
+           별도의 장식 레이어(::before)로만 그려서, 실제 글자는 절대 가리지 않게 했습니다. */
+        .portal-ring {
+            position: relative;
+        }
+        .portal-ring::before {
+            content: "";
+            position: absolute;
+            z-index: 0;
+            inset: -30px -20px auto auto;
+            width: 200px;
+            height: 200px;
+            pointer-events: none;
+            background-image: repeating-radial-gradient(circle at 100% 0%, rgba(79, 163, 207, 0.32) 0px, rgba(79, 163, 207, 0.32) 1px, transparent 1px, transparent 8px);
+            mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 70%);
+        }
+        .movie-headline, .rank-badge {
+            position: relative;
+            z-index: 1;
+        }
         .movie-headline {
             display: inline-block;
             color: #182330;
@@ -284,8 +305,8 @@ st.markdown(
             font-weight: 700;
             padding: 0.6rem 0.9rem;
             border-bottom: 1px solid #bfe0ee;
-            /* 자를 대듯 아주 옅게 반복되는 세로선 — 표 머리글에만 살짝. */
-            background-image: repeating-linear-gradient(90deg, rgba(47, 127, 174, 0.07) 0px, rgba(47, 127, 174, 0.07) 1px, transparent 1px, transparent 40px);
+            /* 표 머리글에도 같은 잔물결 결을 아주 옅게. */
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='26'><path d='M-6 13 Q 6 1 18 13 T 42 13 T 66 13 T 90 13 T 114 13' fill='none' stroke='%232f7fae' stroke-width='0.7' stroke-opacity='0.12'/></svg>");
         }
         .rank-table thead th.num { text-align: right; }
         .rank-table tbody td {
@@ -305,9 +326,9 @@ st.markdown(
         .guide-box {
             position: relative;
             padding: 1.3rem 1.4rem;
-            /* 옅은 사선 결(반복되는 선 무늬)을 바탕 위에 살짝 얹었습니다. */
+            /* 카드와 같은 잔물결 결을 얹어 화면 전체의 질감을 통일했습니다. */
             background:
-                repeating-linear-gradient(135deg, rgba(79, 163, 207, 0.05) 0px, rgba(79, 163, 207, 0.05) 1px, transparent 1px, transparent 9px),
+                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='26'><path d='M-6 13 Q 6 1 18 13 T 42 13 T 66 13 T 90 13 T 114 13' fill='none' stroke='%234fa3cf' stroke-width='0.8' stroke-opacity='0.14'/></svg>"),
                 linear-gradient(160deg, #f3f9fc 0%, #e9f3f8 100%);
             border: 1px solid #cfe3ee;
             border-left: 3px solid #4fa3cf;
@@ -477,7 +498,7 @@ top1 = df.iloc[0]
 
 st.markdown('<div class="section-label fade-in">오늘의 1위</div>', unsafe_allow_html=True)
 st.markdown(
-    f'<div class="fade-in">'
+    f'<div class="fade-in portal-ring">'
     f'<span class="movie-headline">{html.escape(top1["영화명"])}</span>'
     f'<span class="rank-badge">1위</span>'
     f"</div>",
