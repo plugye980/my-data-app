@@ -39,18 +39,27 @@ st.set_page_config(page_title="어제의 박스오피스", layout="wide")
 st.markdown(
     """
     <style>
-        /* 흰 배경 위에 하늘색과 황동빛을 아주 옅게 흘려 넣어, 밋밋한 흰 여백이 아니라
-           은은하게 색이 스며든 배경을 만듭니다. */
+        /* 배경은 순백을 기본으로 하고, 색이 있는 은은한 빛 번짐은 별도의 층(::after)에서
+           천천히 움직이게 만들어 화면이 완전히 정지해 보이지 않도록 합니다. */
         html, body, [data-testid="stAppViewContainer"] {
-            background:
-                radial-gradient(circle at 10% -8%, #e3f4fb 0%, transparent 42%),
-                radial-gradient(circle at 100% 4%, #faf1de 0%, transparent 38%),
-                #ffffff;
-            color: #262a30;
+            background: #ffffff;
+            color: #20242b;
         }
         [data-testid="stHeader"] { background: transparent; }
         .block-container { padding-top: 2.6rem; padding-bottom: 3rem; max-width: 1180px; }
 
+        /* 아주 옅은 하늘색 빛 번짐이 천천히 떠다니는 배경 층입니다. */
+        [data-testid="stAppViewContainer"]::after {
+            content: "";
+            position: fixed;
+            inset: -12%;
+            pointer-events: none;
+            z-index: 0;
+            background:
+                radial-gradient(circle at 14% 8%, #dbf1fb 0%, transparent 40%),
+                radial-gradient(circle at 92% 2%, #fbf1de 0%, transparent 26%);
+            animation: driftGlow 26s ease-in-out infinite alternate;
+        }
         /* 화면 전체에 아주 옅은 종이 질감(노이즈)을 얹어, 색면이 평평해 보이지 않게 합니다. */
         [data-testid="stAppViewContainer"]::before {
             content: "";
@@ -58,11 +67,25 @@ st.markdown(
             inset: 0;
             pointer-events: none;
             z-index: 0;
-            opacity: 0.05;
+            opacity: 0.045;
             mix-blend-mode: multiply;
             background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
         }
         [data-testid="stAppViewContainer"] > * { position: relative; z-index: 1; }
+
+        @keyframes driftGlow {
+            0%   { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-2.5%, 2%) scale(1.04); }
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(184, 135, 74, 0.45); }
+            50%      { box-shadow: 0 0 7px 3px rgba(184, 135, 74, 0.32); }
+        }
+        .fade-in { animation: fadeSlideUp 0.6s ease both; }
 
         /* 전체 글꼴에 살짝 자간을 주어 차분하고 모던한 인상을 만듭니다. */
         h1, h2, h3, h4, p, span, div, label { letter-spacing: 0.01em; }
@@ -70,22 +93,23 @@ st.markdown(
         .app-title {
             font-size: 2.1rem;
             font-weight: 700;
-            color: #1c2733;
+            color: #182330;
             margin-bottom: 0.15rem;
         }
         .app-subtitle {
-            color: #6b7280;
+            color: #545b66;
             font-size: 0.95rem;
             margin-bottom: 1.6rem;
         }
 
-        /* 제목 아래, 가운데가 살짝 어긋난(비대칭) 균열형 구분선.
-           하늘색 선 가운데에 황동빛 포인트를 하나 박아 두 색을 섞습니다. */
+        /* 구분선은 기본적으로 하늘색 하나만 씁니다. 제목 바로 아래의 구분선(.hero)에만
+           황동빛 포인트를 아주 살짝 얹어, 화면 전체에서 황동색이 나오는 지점을
+           최소한으로 줄였습니다. */
         .crack-divider {
             position: relative;
             height: 1px;
             margin: 1.4rem 0 2.0rem 0;
-            background: linear-gradient(90deg, transparent 0%, #4fa3cf66 35%, #b8874ad9 50%, #4fa3cf66 65%, transparent 100%);
+            background: linear-gradient(90deg, transparent 0%, #4fa3cf70 35%, #4fa3cfb0 50%, #4fa3cf70 65%, transparent 100%);
         }
         .crack-divider::after {
             content: "";
@@ -95,8 +119,15 @@ st.markdown(
             width: 7px;
             height: 7px;
             background: #ffffff;
-            border: 1px solid #b8874a;
+            border: 1px solid #4fa3cf;
             transform: translateX(-50%) rotate(45deg);
+        }
+        .crack-divider.hero {
+            background: linear-gradient(90deg, transparent 0%, #4fa3cf70 35%, #b8874ac0 50%, #4fa3cf70 65%, transparent 100%);
+        }
+        .crack-divider.hero::after {
+            border: 1px solid #b8874a;
+            animation: pulseGlow 2.6s ease-in-out infinite;
         }
 
         .section-label {
@@ -108,21 +139,36 @@ st.markdown(
             margin-bottom: 0.8rem;
         }
 
-        /* 1위 영화 지표 카드 3장 — 모서리를 서로 다르게 잘라 비대칭을 만들고,
-           대각선 균열 하나씩을 겹쳐 특별한 질감을 줍니다. 가운데 카드만 균열을
-           황동빛으로 두어 하늘색 톤 사이에 포인트를 섞었습니다. */
+        /* 1위 영화 지표 카드 — 세 장의 크기를 일부러 다르게 두어(1:1로 맞춰진 정사각 그리드가
+           아니라) 왼쪽 카드가 더 크고 도드라진 '대표 카드'가 되도록 했습니다. 모서리도
+           서로 다르게 잘라 비대칭을 만들고, 대각선 균열 하나씩을 겹쳐 질감을 줍니다. */
         .kpi-card {
             position: relative;
-            padding: 1.4rem 1.3rem 1.2rem 1.3rem;
+            padding: 1.3rem 1.3rem 1.1rem 1.3rem;
             background: linear-gradient(155deg, #ffffff 0%, #eff8fb 100%);
             border: 1px solid #d7e8f0;
             box-shadow: 0 1px 3px rgba(31, 61, 82, 0.06);
-            min-height: 132px;
             overflow: hidden;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
-        .kpi-card.card-1 { clip-path: polygon(0 0, 100% 0, 100% 100%, 8% 100%, 0 86%); }
-        .kpi-card.card-2 { clip-path: polygon(0 10%, 93% 0, 100% 0, 100% 100%, 0 100%); }
-        .kpi-card.card-3 { clip-path: polygon(0 0, 100% 0, 100% 88%, 94% 100%, 0 100%); }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 22px rgba(31, 61, 82, 0.12);
+        }
+        .kpi-card.card-hero {
+            min-height: 168px;
+            padding: 1.7rem 1.5rem 1.4rem 1.5rem;
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 6% 100%, 0 90%);
+            box-shadow: 0 6px 18px rgba(79, 163, 207, 0.14);
+        }
+        .kpi-card.card-2 {
+            min-height: 118px;
+            clip-path: polygon(0 9%, 90% 0, 100% 0, 100% 100%, 0 100%);
+        }
+        .kpi-card.card-3 {
+            min-height: 118px;
+            clip-path: polygon(0 0, 100% 0, 100% 82%, 90% 100%, 0 100%);
+        }
 
         .kpi-card::before {
             content: "";
@@ -134,12 +180,9 @@ st.markdown(
             left: -30%;
             transform: rotate(-9deg);
         }
-        .kpi-card.card-2::before {
-            background: linear-gradient(90deg, transparent, #b8874a99 45%, #b8874a99 55%, transparent);
-        }
         .kpi-label {
             position: relative;
-            color: #6b7280;
+            color: #545b66;
             font-size: 0.78rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
@@ -147,46 +190,87 @@ st.markdown(
         }
         .kpi-value {
             position: relative;
-            color: #1c2733;
+            color: #182330;
             font-size: 1.9rem;
             font-weight: 700;
         }
+        .kpi-card.card-hero .kpi-value { font-size: 2.35rem; }
         .kpi-unit {
             font-size: 0.95rem;
-            color: #6b7280;
+            color: #545b66;
             font-weight: 400;
             margin-left: 0.2rem;
         }
 
         .movie-headline {
-            color: #1c2733;
+            display: inline-block;
+            color: #182330;
             font-size: 1.35rem;
             font-weight: 700;
             margin-bottom: 0.2rem;
+            margin-right: 0.55rem;
+        }
+        /* 화면에서 황동색이 등장하는 두 지점 중 하나 — 1위 영화 이름 옆의 작은 표식입니다. */
+        .rank-badge {
+            display: inline-block;
+            padding: 0.12rem 0.55rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            color: #8a6423;
+            background: #fbf0dc;
+            border: 1px solid #d9b877;
+            border-radius: 999px;
+            vertical-align: middle;
         }
         .movie-meta {
-            color: #6b7280;
+            color: #545b66;
             font-size: 0.88rem;
             margin-bottom: 1.1rem;
         }
 
-        /* 데이터 표가 도드라진 박스로 튀지 않도록, 배경 톤에 스며들게 만듭니다. */
-        [data-testid="stDataFrame"] { background: transparent; }
+        /* 전체 순위표 — 캔버스로 그려지는 기본 표 대신 직접 만든 표를 써서,
+           배경/글자색이 항상 이 화면의 밝은 톤을 그대로 따르도록 했습니다. */
+        .rank-table-wrap { overflow-x: auto; }
+        .rank-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+        .rank-table thead th {
+            text-align: left;
+            color: #545b66;
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            padding: 0.6rem 0.9rem;
+            border-bottom: 1px solid #bfe0ee;
+        }
+        .rank-table thead th.num { text-align: right; }
+        .rank-table tbody td {
+            padding: 0.62rem 0.9rem;
+            color: #20242b;
+            border-bottom: 1px solid #eef3f6;
+        }
+        .rank-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+        .rank-table tbody tr {
+            animation: fadeSlideUp 0.5s ease both;
+            transition: background-color 0.2s ease;
+        }
+        .rank-table tbody tr:hover { background-color: #f2f9fc; }
+        .rank-table tbody tr.rank-first td:first-child { border-left: 3px solid #4fa3cf; }
+        .rank-table tbody tr.rank-first td { padding-top: 0.72rem; padding-bottom: 0.72rem; }
 
-        /* 안내(가이드) 메시지 상자 — 완전한 사각형이 되지 않도록 오른쪽 위 모서리를 비스듬히 잘랐고,
-           황동빛 톤으로 다른 섹션과 구분되는 신호를 줍니다. */
+        /* 안내(가이드) 메시지 상자 — 완전한 사각형이 되지 않도록 오른쪽 위 모서리를 비스듬히 잘랐습니다. */
         .guide-box {
             position: relative;
             padding: 1.3rem 1.4rem;
-            background: linear-gradient(160deg, #fff8ec 0%, #fdf2df 100%);
-            border: 1px solid #e7cf9e;
-            border-left: 3px solid #b8874a;
+            background: linear-gradient(160deg, #f3f9fc 0%, #e9f3f8 100%);
+            border: 1px solid #cfe3ee;
+            border-left: 3px solid #4fa3cf;
             clip-path: polygon(0 0, 96% 0, 100% 14%, 100% 100%, 0 100%);
-            color: #4a3c22;
+            color: #24303a;
             line-height: 1.65;
         }
         .guide-title {
-            color: #8a6423;
+            color: #2f7fae;
             font-weight: 700;
             margin-bottom: 0.5rem;
             font-size: 1.0rem;
@@ -246,12 +330,13 @@ def render_guide(title: str, lines: list[str]) -> None:
 # ────────────────────────────────────────────────────────────────
 target_dt = get_yesterday_kst()
 
-st.markdown('<div class="app-title">어제의 박스오피스</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-title fade-in">어제의 박스오피스</div>', unsafe_allow_html=True)
 st.markdown(
-    f'<div class="app-subtitle">기준일 · {format_date_korean(target_dt)} (한국 시간 기준 어제)</div>',
+    f'<div class="app-subtitle fade-in" style="animation-delay:0.06s">'
+    f'기준일 · {format_date_korean(target_dt)} (한국 시간 기준 어제)</div>',
     unsafe_allow_html=True,
 )
-st.markdown('<div class="crack-divider"></div>', unsafe_allow_html=True)
+st.markdown('<div class="crack-divider hero"></div>', unsafe_allow_html=True)
 
 
 # ────────────────────────────────────────────────────────────────
@@ -344,13 +429,21 @@ df = pd.DataFrame(rows).sort_values("순위").reset_index(drop=True)
 # ────────────────────────────────────────────────────────────────
 top1 = df.iloc[0]
 
-st.markdown('<div class="section-label">오늘의 1위</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="movie-headline">{html.escape(top1["영화명"])}</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="movie-meta">개봉일 · {html.escape(top1["개봉일"])}</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label fade-in">오늘의 1위</div>', unsafe_allow_html=True)
+st.markdown(
+    f'<div class="fade-in">'
+    f'<span class="movie-headline">{html.escape(top1["영화명"])}</span>'
+    f'<span class="rank-badge">1위</span>'
+    f"</div>",
+    unsafe_allow_html=True,
+)
+st.markdown(f'<div class="movie-meta fade-in">개봉일 · {html.escape(top1["개봉일"])}</div>', unsafe_allow_html=True)
 
-card_col1, card_col2, card_col3 = st.columns(3)
+# 카드 3장의 너비를 일부러 다르게 두어(1.3 : 1 : 1) 똑같은 정사각형이 반복되는
+# 느낌을 없애고, 왼쪽 카드가 도드라진 '대표 카드'가 되도록 했습니다.
+card_col1, card_col2, card_col3 = st.columns([1.3, 1, 1])
 card_specs = [
-    (card_col1, "card-1", "일일 관객수", top1["관객수"], "명"),
+    (card_col1, "card-hero", "일일 관객수", top1["관객수"], "명"),
     (card_col2, "card-2", "누적 관객수", top1["누적관객"], "명"),
     (card_col3, "card-3", "상영 스크린수", top1["스크린수"], "개"),
 ]
@@ -373,20 +466,16 @@ st.markdown('<div class="crack-divider"></div>', unsafe_allow_html=True)
 # 10. 관객수 상위 5편 — 막대그래프
 #     화려한 배경이나 테두리 없이, 눈금선만으로 값을 읽을 수 있도록 최소한으로 그립니다.
 # ────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-label">관객수 상위 5편</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label fade-in">관객수 상위 5편</div>', unsafe_allow_html=True)
 
 top5 = df.sort_values("관객수", ascending=False).head(5).sort_values("관객수", ascending=True)
-
-# 막대는 대부분 하늘색으로 통일하되, 관객수 1위 막대 하나만 황동빛으로 두어
-# 색을 섞은 포인트를 줍니다.
-bar_colors = ["#4fa3cf"] * (len(top5) - 1) + ["#b8874a"]
 
 fig = go.Figure(
     go.Bar(
         x=top5["관객수"],
         y=top5["영화명"],
         orientation="h",
-        marker=dict(color=bar_colors, line=dict(width=0)),
+        marker=dict(color="#4fa3cf", line=dict(width=0)),
         width=0.45,
         hovertemplate="%{y}<br>관객수 %{x:,}명<extra></extra>",
     )
@@ -415,19 +504,43 @@ st.markdown('<div class="crack-divider"></div>', unsafe_allow_html=True)
 
 # ────────────────────────────────────────────────────────────────
 # 11. 전체 순위표
+#     st.dataframe은 내부적으로 캔버스에 직접 그려지기 때문에, 브라우저나 OS가
+#     어두운 모드를 선호하면 이 화면의 밝은 톤과 상관없이 검게 나올 수 있습니다.
+#     그래서 직접 HTML 표를 만들어, 색이 항상 이 페이지 디자인을 따르게 했습니다.
 # ────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-label">전체 순위</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label fade-in">전체 순위</div>', unsafe_allow_html=True)
 
-st.dataframe(
-    df,
-    hide_index=True,
-    use_container_width=True,
-    column_config={
-        "순위": st.column_config.NumberColumn("순위"),
-        "영화명": st.column_config.TextColumn("영화명"),
-        "개봉일": st.column_config.TextColumn("개봉일"),
-        "관객수": st.column_config.NumberColumn("관객수", format="%,d"),
-        "누적관객": st.column_config.NumberColumn("누적관객", format="%,d"),
-        "스크린수": st.column_config.NumberColumn("스크린수", format="%,d"),
-    },
-)
+
+def build_rank_table_html(table_df: pd.DataFrame) -> str:
+    """순위표 DataFrame을 직접 스타일을 입힌 HTML 표 문자열로 바꿉니다."""
+    numeric_columns = {"순위", "관객수", "누적관객", "스크린수"}
+    header_cells = "".join(
+        f'<th class="{"num" if col in numeric_columns else ""}">{html.escape(col)}</th>'
+        for col in table_df.columns
+    )
+
+    body_rows = []
+    for row_index, row in enumerate(table_df.itertuples(index=False)):
+        row_class = "rank-first" if row.순위 == 1 else ""
+        animation_delay = min(row_index * 0.05, 0.4)
+        cells = (
+            f'<td class="num">{row.순위}</td>'
+            f'<td>{html.escape(row.영화명)}</td>'
+            f'<td>{html.escape(row.개봉일)}</td>'
+            f'<td class="num">{row.관객수:,}</td>'
+            f'<td class="num">{row.누적관객:,}</td>'
+            f'<td class="num">{row.스크린수:,}</td>'
+        )
+        body_rows.append(
+            f'<tr class="{row_class}" style="animation-delay:{animation_delay:.2f}s">{cells}</tr>'
+        )
+
+    return (
+        '<div class="rank-table-wrap fade-in"><table class="rank-table">'
+        f"<thead><tr>{header_cells}</tr></thead>"
+        f'<tbody>{"".join(body_rows)}</tbody>'
+        "</table></div>"
+    )
+
+
+st.markdown(build_rank_table_html(df), unsafe_allow_html=True)
