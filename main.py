@@ -124,7 +124,7 @@ def build_bar_texture_svg() -> str:
     rng = random.Random(8123)
     width, height = 2400, 60
     parts = []
-    for _ in range(38):
+    for _ in range(18):
         x = rng.uniform(-40, width)
         y_start = rng.uniform(-14, height + 14)
         y_end = y_start + rng.choice((-1, 1)) * rng.uniform(height * 0.5, height * 1.5)
@@ -172,29 +172,6 @@ def build_quatrefoil_svg(color: str, stroke: float = 1.1, opacity: float = 0.75)
     )
 
 
-def build_tracery_svg(color: str) -> str:
-    """첨두아치 트레이서리 — 뾰족한 아치 하나, 그 안의 작은 아치 둘, 그리고 작은 원."""
-    width, height = 120, 150
-    base = height - 4
-    outer = (
-        f"M6 {base}L6 78"
-        f"A{width - 12} {width - 12} 0 0 1 {width // 2} 10"
-        f"A{width - 12} {width - 12} 0 0 1 {width - 6} 78"
-        f"L{width - 6} {base}"
-    )
-    inner_left = f"M22 {base}L22 104A38 38 0 0 1 58 104L58 {base}"
-    inner_right = f"M62 {base}L62 104A38 38 0 0 1 98 104L98 {base}"
-    oculus = "M60 62m-13 0a13 13 0 1 0 26 0a13 13 0 1 0 -26 0"
-    paths = "".join(
-        f"<path d='{d}' fill='none' stroke='{color}' stroke-width='{sw}' stroke-linecap='round'/>"
-        for d, sw in ((outer, 1.6), (inner_left, 1.1), (inner_right, 1.1), (oculus, 1.1))
-    )
-    return (
-        f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'"
-        f" viewBox='0 0 {width} {height}'>{paths}</svg>"
-    )
-
-
 def _css_url(svg: str) -> str:
     """SVG 문자열을 CSS에서 배경 그림으로 쓸 수 있는 형태로 감쌉니다."""
     return f'url("data:image/svg+xml;utf8,{svg}")'
@@ -207,7 +184,6 @@ st.markdown(
     "@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');"
     f":root{{--vein:{_css_url(build_vein_svg())};"
     f"--vein-bar:{_css_url(build_bar_texture_svg())};"
-    f"--tracery:{_css_url(build_tracery_svg('%234fa3cf'))};"
     f"--quatrefoil:{_css_url(build_quatrefoil_svg('%234fa3cf'))};"
     f"--quatrefoil-brass:{_css_url(build_quatrefoil_svg('%23b8874a', 1.3, 0.9))};"
     "--font:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;}"
@@ -386,19 +362,6 @@ st.markdown(
                 0 16px 34px rgba(31, 61, 82, 0.13),
                 inset 0 1px 0 rgba(255, 255, 255, 0.95);
         }
-        /* 카드마다 첨두아치 트레이서리를 한 귀퉁이에 아주 옅게 깔아 둡니다.
-           크기와 위치를 카드별로 다르게 두어 나란히 놓인 느낌을 피했습니다. */
-        .kpi-card::after {
-            content: "";
-            position: absolute;
-            z-index: 0;
-            pointer-events: none;
-            background: var(--tracery) center / contain no-repeat;
-            opacity: 0.16;
-        }
-        .kpi-card.card-hero::after { width: 78px; height: 98px; right: 26px; bottom: -14px; }
-        .kpi-card.card-2::after { width: 52px; height: 65px; right: 18px; bottom: -12px; opacity: 0.13; }
-        .kpi-card.card-3::after { width: 44px; height: 55px; left: 20px; bottom: -10px; opacity: 0.13; }
         .kpi-card.card-hero {
             min-height: 168px;
             padding: 1.7rem 1.5rem 1.4rem 1.5rem;
@@ -484,19 +447,6 @@ st.markdown(
            똑같은 결과 유리 재질을 막대에도 씁니다. 배경에는 눈금선만 둡니다. */
         .bar-chart { --label-w: 150px; --gap: 16px; }
         .bar-plot { position: relative; }
-        /* 그래프 오른쪽 뒤에도 같은 트레이서리를 아주 옅게 한 장. */
-        .bar-plot::after {
-            content: "";
-            position: absolute;
-            z-index: 0;
-            right: 2%;
-            bottom: -6px;
-            width: 66px;
-            height: 82px;
-            pointer-events: none;
-            background: var(--tracery) center / contain no-repeat;
-            opacity: 0.12;
-        }
         .bar-row { position: relative; z-index: 1; }
         .bar-grid {
             position: absolute;
@@ -598,20 +548,13 @@ st.markdown(
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             clip-path: polygon(0 0, 100% 0, 100% 96%, 97% 100%, 0 100%);
         }
-        /* 표에도 같은 트레이서리를 왼쪽 아래 귀퉁이에 한 장, 아주 옅게. */
-        .rank-table-wrap::after {
-            content: "";
-            position: absolute;
-            z-index: 0;
-            left: 2.5%;
-            bottom: -8px;
-            width: 58px;
-            height: 72px;
-            pointer-events: none;
-            background: var(--tracery) center / contain no-repeat;
-            opacity: 0.1;
-        }
         .rank-table { position: relative; z-index: 1; width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+        /* 칸과 칸 사이에도 아주 연한 세로선을 하나씩 — 그래프의 눈금선과 같은 결로,
+           숫자를 읽을 때 열이 눈으로 구분되게 해줍니다. */
+        .rank-table th + th,
+        .rank-table td + td {
+            border-left: 1px solid rgba(120, 160, 185, 0.1);
+        }
         .rank-table thead th {
             text-align: left;
             color: #667380;
