@@ -362,6 +362,32 @@ st.markdown(
                 0 16px 34px rgba(31, 61, 82, 0.13),
                 inset 0 1px 0 rgba(255, 255, 255, 0.95);
         }
+        /* 마우스를 올리면 유리 위로 빛이 한 번 스칩니다. */
+        .kpi-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background: linear-gradient(115deg, transparent 36%, rgba(255, 255, 255, 0.5) 50%, transparent 64%);
+            transform: translateX(-130%);
+            transition: transform 0.75s cubic-bezier(0.2, 0.7, 0.3, 1);
+        }
+        .kpi-card:hover::after { transform: translateX(130%); }
+        /* 평소에는 숨어 있다가, 마우스를 올리면 이 숫자가 무엇인지 알려줍니다. */
+        .kpi-hint {
+            position: relative;
+            z-index: 1;
+            margin-top: 0.6rem;
+            font-size: 0.7rem;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            color: #7b8794;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .kpi-card:hover .kpi-hint { opacity: 1; transform: translateY(0); }
         .kpi-card.card-hero {
             min-height: 168px;
             padding: 1.7rem 1.5rem 1.4rem 1.5rem;
@@ -511,6 +537,49 @@ st.markdown(
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
+        /* 마우스를 올린 막대만 또렷해지고 나머지는 한 발 물러납니다.
+           올린 막대 위에는 나머지 수치를 담은 쪽지가 떠오릅니다. */
+        .bar-row { transition: opacity 0.2s ease; }
+        .bar-plot:hover .bar-row { opacity: 0.45; }
+        .bar-plot:hover .bar-row:hover { opacity: 1; z-index: 4; }
+        .bar { transition: filter 0.2s ease, box-shadow 0.2s ease; }
+        .bar-row:hover .bar {
+            filter: saturate(140%) brightness(1.03);
+            box-shadow:
+                0 4px 18px rgba(31, 61, 82, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        }
+        .bar-label, .bar-value { transition: color 0.2s ease; }
+        .bar-row:hover .bar-label,
+        .bar-row:hover .bar-value { color: #16202c; }
+        .bar-tip {
+            position: absolute;
+            bottom: calc(100% + 12px);
+            transform: translate(-50%, 5px);
+            padding: 0.5rem 0.75rem;
+            white-space: nowrap;
+            font-size: 0.72rem;
+            font-weight: 300;
+            line-height: 1.6;
+            color: #26303c;
+            background: rgba(255, 255, 255, 0.82);
+            -webkit-backdrop-filter: blur(12px) saturate(130%);
+            backdrop-filter: blur(12px) saturate(130%);
+            border: 1px solid rgba(255, 255, 255, 0.92);
+            box-shadow:
+                0 0 0 1px rgba(122, 172, 202, 0.22),
+                0 10px 26px rgba(31, 61, 82, 0.15);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+        }
+        .bar-tip b { font-weight: 500; color: #16202c; }
+        .bar-row:hover .bar-tip {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, 0);
+        }
         .bar-axis {
             position: relative;
             height: 20px;
@@ -578,12 +647,26 @@ st.markdown(
         .rank-table tbody tr {
             transition: background-color 0.2s ease;
         }
-        .rank-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.55); }
+        .rank-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.62); }
+        .rank-table tbody td { transition: color 0.2s ease; }
+        .rank-table tbody tr:hover td { color: #16202c; }
+        /* 마우스를 올린 줄의 왼쪽에 가는 띠가 위아래로 펴집니다. */
+        .rank-table tbody td:first-child { position: relative; }
+        .rank-table tbody td:first-child::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 5px;
+            bottom: 5px;
+            width: 2px;
+            background: rgba(79, 163, 207, 0.85);
+            transform: scaleY(0);
+            transition: transform 0.2s ease;
+        }
+        .rank-table tbody tr:hover td:first-child::before { transform: scaleY(1); }
         /* 1위 줄만 살짝 또렷하게 — 숫자를 굵히는 대신 왼쪽에 가는 띠를 둡니다. */
         .rank-table tbody tr.rank-first td { color: #16202c; font-weight: 400; }
-        .rank-table tbody tr.rank-first td:first-child {
-            box-shadow: inset 2px 0 0 rgba(79, 163, 207, 0.85);
-        }
+        .rank-table tbody tr.rank-first td:first-child::before { transform: scaleY(1); }
 
         /* 안내(가이드) 메시지 상자 — 카드와 같은 유리판이되, 왼쪽에 하늘색 띠를 둘러
            눈에 먼저 들어오게 합니다. 오른쪽 위 모서리는 비스듬히 잘랐습니다. */
@@ -780,12 +863,13 @@ st.markdown(f'<div class="movie-meta fade-in">개봉일 · {html.escape(top1["�
 # 카드 3장의 너비를 일부러 다르게 두어(1.3 : 1 : 1) 똑같은 정사각형이 반복되는
 # 느낌을 없애고, 왼쪽 카드가 도드라진 '대표 카드'가 되도록 했습니다.
 card_col1, card_col2, card_col3 = st.columns([1.3, 1, 1])
+# 마지막 항목(hint)은 평소엔 숨어 있다가, 마우스를 올렸을 때만 나타나는 설명입니다.
 card_specs = [
-    (card_col1, "card-hero", "일일 관객수", top1["관객수"], "명"),
-    (card_col2, "card-2", "누적 관객수", top1["누적관객"], "명"),
-    (card_col3, "card-3", "상영 스크린수", top1["스크린수"], "개"),
+    (card_col1, "card-hero", "일일 관객수", top1["관객수"], "명", "어제 하루 동안 이 영화를 본 관객 수"),
+    (card_col2, "card-2", "누적 관객수", top1["누적관객"], "명", "개봉일부터 어제까지 쌓인 관객 수"),
+    (card_col3, "card-3", "상영 스크린수", top1["스크린수"], "개", "어제 이 영화를 상영한 스크린 수"),
 ]
-for col, card_class, label, value, unit in card_specs:
+for col, card_class, label, value, unit, hint in card_specs:
     with col:
         # (문자열을 한 줄로 이어 붙여야 합니다 — 빈 줄이 섞이면 스트림릿의 마크다운
         # 파서가 이어지는 내용을 코드 블록으로 오인해 HTML 태그가 그대로 보입니다.)
@@ -793,6 +877,7 @@ for col, card_class, label, value, unit in card_specs:
             f'<div class="kpi-card {card_class} scroll-reveal">'
             f'<div class="kpi-label">{html.escape(label)}</div>'
             f'<div class="kpi-value">{value:,}<span class="kpi-unit">{html.escape(unit)}</span></div>'
+            f'<div class="kpi-hint">{html.escape(hint)}</div>'
             f"</div>",
             unsafe_allow_html=True,
         )
@@ -824,7 +909,8 @@ def build_axis_ticks(max_value: int) -> list[int]:
 
 def build_bar_chart_html(chart_df: pd.DataFrame) -> str:
     """관객수 막대그래프를 직접 HTML로 그립니다. 막대에도 카드와 같은 결을 깔되,
-    막대마다 결을 다른 자리에서 잘라 써서 무늬가 줄줄이 같아 보이지 않게 합니다."""
+    막대마다 결을 다른 자리에서 잘라 써서 무늬가 줄줄이 같아 보이지 않게 합니다.
+    막대마다 마우스를 올렸을 때 뜨는 쪽지(bar-tip)도 함께 넣습니다."""
     ticks = build_axis_ticks(int(chart_df["관객수"].max()))
     axis_max = ticks[-1]
 
@@ -838,6 +924,9 @@ def build_bar_chart_html(chart_df: pd.DataFrame) -> str:
         width = row.관객수 / axis_max * 100
         vein_x = (index * 37 + 12) % 100
         vein_y = (index * 53 + 20) % 100
+        # 쪽지는 막대 끝에 매달되, 막대가 너무 짧거나 길면 화면 밖으로 밀리므로
+        # 가로 위치를 12%~88% 사이로만 둡니다.
+        tip_left = min(max(width, 12), 88)
         rows.append(
             '<div class="bar-row">'
             f'<div class="bar-label">{html.escape(row.영화명)}</div>'
@@ -846,6 +935,11 @@ def build_bar_chart_html(chart_df: pd.DataFrame) -> str:
             f"background-position:{vein_x}% {vein_y}%,0 0;"
             f'animation-delay:{index * 0.08:.2f}s"></div>'
             f'<div class="bar-value" style="left:{width:.2f}%">{row.관객수:,}</div>'
+            f'<div class="bar-tip" style="left:{tip_left:.2f}%">'
+            f"<b>{html.escape(row.영화명)}</b><br>"
+            f"관객 {row.관객수:,}명 · 누적 {row.누적관객:,}명<br>"
+            f"스크린 {row.스크린수:,}개 · 개봉 {html.escape(row.개봉일)}"
+            "</div>"
             "</div></div>"
         )
 
