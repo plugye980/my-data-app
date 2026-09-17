@@ -14,7 +14,6 @@ import random
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
-import plotly.graph_objects as go
 import requests
 import streamlit as st
 
@@ -123,9 +122,14 @@ def _css_url(svg: str) -> str:
     return f'url("data:image/svg+xml;utf8,{svg}")'
 
 
-# 만든 결을 CSS 변수로 한 번만 등록해두고, 아래 스타일에서 가져다 씁니다.
+# 글꼴을 먼저 불러오고(@import는 스타일시트 맨 앞에 와야 합니다), 만든 결을
+# CSS 변수로 한 번만 등록해둔 뒤 아래 스타일에서 가져다 씁니다.
 st.markdown(
-    f"<style>:root{{--vein:{_css_url(build_vein_svg())};}}</style>",
+    "<style>"
+    "@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');"
+    f":root{{--vein:{_css_url(build_vein_svg())};"
+    "--font:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;}"
+    "</style>",
     unsafe_allow_html=True,
 )
 
@@ -145,8 +149,13 @@ st.markdown(
             background: #fdfeff;
             color: #20242b;
         }
+        html, body, [data-testid="stAppViewContainer"], .block-container,
+        .rank-table, .bar-chart {
+            font-family: var(--font);
+            -webkit-font-smoothing: antialiased;
+        }
         [data-testid="stHeader"] { background: transparent; }
-        .block-container { padding-top: 2.6rem; padding-bottom: 3rem; max-width: 1180px; }
+        .block-container { padding-top: 3.2rem; padding-bottom: 4rem; max-width: 1180px; }
 
         /* 크게 번진 색 덩어리들이 천천히 떠다니는 배경 층 — 유리판 뒤에서 흐릿하게
            비쳐 보이는 것이 이 층입니다. */
@@ -158,11 +167,11 @@ st.markdown(
             z-index: 0;
             filter: blur(22px);
             background:
-                radial-gradient(38% 42% at 10% 8%, rgba(125, 197, 232, 0.72) 0%, transparent 70%),
-                radial-gradient(30% 34% at 88% 4%, rgba(245, 217, 168, 0.62) 0%, transparent 72%),
-                radial-gradient(36% 42% at 74% 40%, rgba(143, 198, 231, 0.5) 0%, transparent 72%),
-                radial-gradient(42% 38% at 18% 70%, rgba(170, 209, 235, 0.52) 0%, transparent 70%),
-                radial-gradient(34% 30% at 58% 88%, rgba(226, 214, 236, 0.4) 0%, transparent 72%);
+                radial-gradient(38% 42% at 10% 8%, rgba(158, 211, 238, 0.42) 0%, transparent 70%),
+                radial-gradient(30% 34% at 88% 4%, rgba(245, 220, 178, 0.55) 0%, transparent 72%),
+                radial-gradient(36% 42% at 74% 40%, rgba(178, 215, 238, 0.3) 0%, transparent 72%),
+                radial-gradient(42% 38% at 18% 70%, rgba(196, 222, 240, 0.32) 0%, transparent 70%),
+                radial-gradient(34% 30% at 58% 88%, rgba(230, 221, 240, 0.3) 0%, transparent 72%);
             animation: driftGlow 26s ease-in-out infinite alternate;
         }
         /* 화면 전체에 아주 옅은 종이 질감(노이즈)을 얹어, 색면이 평평해 보이지 않게 합니다. */
@@ -210,19 +219,23 @@ st.markdown(
             }
         }
 
-        /* 전체 글꼴에 살짝 자간을 주어 차분하고 모던한 인상을 만듭니다. */
+        /* 글씨는 유리 느낌에 맞춰 가늘고 넓게. 큰 제목일수록 굵기를 낮추고 자간을
+           벌려서, 두껍게 눌러쓴 느낌 대신 가볍고 트인 인상을 줍니다. */
         h1, h2, h3, h4, p, span, div, label { letter-spacing: 0.01em; }
 
         .app-title {
-            font-size: 2.1rem;
-            font-weight: 700;
-            color: #182330;
-            margin-bottom: 0.15rem;
+            font-size: 2.45rem;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+            color: #16202c;
+            margin-bottom: 0.3rem;
         }
         .app-subtitle {
-            color: #545b66;
-            font-size: 0.95rem;
-            margin-bottom: 1.6rem;
+            color: #6a7481;
+            font-size: 0.86rem;
+            font-weight: 300;
+            letter-spacing: 0.04em;
+            margin-bottom: 1.8rem;
         }
 
         /* 구분선은 하늘색 하나만 씁니다. */
@@ -245,12 +258,12 @@ st.markdown(
         }
 
         .section-label {
-            color: #2f7fae;
-            font-size: 0.82rem;
-            font-weight: 600;
+            color: #4a8fb8;
+            font-size: 0.72rem;
+            font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.14em;
-            margin-bottom: 0.8rem;
+            letter-spacing: 0.22em;
+            margin-bottom: 1rem;
         }
 
         /* 1위 영화 지표 카드 — 반투명 유리판처럼 보이도록 배경을 살짝만 채우고,
@@ -293,61 +306,156 @@ st.markdown(
             background-size: 195% 265%, auto;
             background-position: 68% 6%, 0 0;
         }
+        /* 3번 카드는 결이 한 점으로 모이는 부분을 피해, 선들이 서로 떨어져 흐르는
+           구간을 오른쪽에서 잘라 씁니다. */
         .kpi-card.card-3 {
             min-height: 118px;
             clip-path: polygon(0 0, 100% 0, 100% 82%, 90% 100%, 0 100%);
-            background-size: 200% 255%, auto;
-            background-position: 34% 46%, 0 0;
+            background-size: 230% 210%, auto;
+            background-position: 88% 16%, 0 0;
         }
         .kpi-label, .kpi-value, .kpi-unit {
             position: relative;
             z-index: 1;
         }
         .kpi-label {
-            color: #545b66;
-            font-size: 0.78rem;
+            color: #6a7481;
+            font-size: 0.7rem;
+            font-weight: 400;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 0.55rem;
+            letter-spacing: 0.18em;
+            margin-bottom: 0.7rem;
         }
         .kpi-value {
-            color: #182330;
-            font-size: 1.9rem;
-            font-weight: 700;
+            color: #16202c;
+            font-size: 2rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            font-variant-numeric: tabular-nums;
         }
-        .kpi-card.card-hero .kpi-value { font-size: 2.35rem; }
+        .kpi-card.card-hero .kpi-value { font-size: 2.6rem; }
         .kpi-unit {
-            font-size: 0.95rem;
-            color: #545b66;
-            font-weight: 400;
-            margin-left: 0.2rem;
+            font-size: 0.85rem;
+            color: #78828f;
+            font-weight: 300;
+            margin-left: 0.35rem;
+            letter-spacing: 0.02em;
         }
 
         .movie-headline {
             display: inline-block;
-            color: #182330;
-            font-size: 1.35rem;
-            font-weight: 700;
+            color: #16202c;
+            font-size: 1.5rem;
+            font-weight: 400;
+            letter-spacing: 0.01em;
             margin-bottom: 0.2rem;
-            margin-right: 0.55rem;
+            margin-right: 0.6rem;
         }
         /* 화면에서 황동색이 등장하는 두 지점 중 하나 — 1위 영화 이름 옆의 작은 표식입니다. */
         .rank-badge {
             display: inline-block;
-            padding: 0.12rem 0.55rem;
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.06em;
+            padding: 0.16rem 0.62rem;
+            font-size: 0.66rem;
+            font-weight: 500;
+            letter-spacing: 0.12em;
             color: #8a6423;
-            background: #fbf0dc;
-            border: 1px solid #d9b877;
+            background: rgba(251, 240, 220, 0.75);
+            border: 1px solid rgba(217, 184, 119, 0.75);
             border-radius: 999px;
             vertical-align: middle;
         }
         .movie-meta {
-            color: #545b66;
-            font-size: 0.88rem;
-            margin-bottom: 1.1rem;
+            color: #78828f;
+            font-size: 0.78rem;
+            font-weight: 300;
+            letter-spacing: 0.04em;
+            margin-bottom: 1.3rem;
+        }
+
+        /* ── 관객수 막대그래프 ─────────────────────────────────────
+           스트림릿의 기본 차트는 별도의 틀(iframe) 안에서 그려져서 이 화면의 유리
+           느낌이나 결을 입힐 수가 없습니다. 그래서 막대까지 직접 그려서, 카드와
+           똑같은 결과 유리 재질을 막대에도 씁니다. 배경에는 눈금선만 둡니다. */
+        .bar-chart { --label-w: 150px; --gap: 16px; }
+        .bar-plot { position: relative; }
+        .bar-grid {
+            position: absolute;
+            left: calc(var(--label-w) + var(--gap));
+            right: 0;
+            top: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+        .bar-grid i {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(90, 130, 160, 0.13);
+        }
+        .bar-row { display: flex; align-items: center; gap: var(--gap); height: 50px; }
+        .bar-label {
+            width: var(--label-w);
+            flex: none;
+            text-align: right;
+            font-size: 0.8rem;
+            font-weight: 300;
+            color: #4a5560;
+            letter-spacing: 0.01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bar-track { position: relative; flex: 1; height: 26px; }
+        .bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background-image: var(--vein), linear-gradient(100deg, rgba(116, 188, 226, 0.62) 0%, rgba(166, 214, 238, 0.42) 100%);
+            background-repeat: no-repeat, no-repeat;
+            background-size: 300% 900%, auto;
+            -webkit-backdrop-filter: blur(6px) saturate(120%);
+            backdrop-filter: blur(6px) saturate(120%);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-left: none;
+            box-shadow:
+                0 2px 10px rgba(31, 61, 82, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.85);
+            clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
+            animation: growBar 1s cubic-bezier(0.22, 0.8, 0.3, 1) both;
+        }
+        /* 끝 값을 따로 적지 않으면, 각 막대가 자기 너비까지 자라납니다. */
+        @keyframes growBar { from { width: 0; } }
+        .bar-value {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 12px;
+            font-size: 0.76rem;
+            font-weight: 400;
+            color: #3a4653;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .bar-axis {
+            position: relative;
+            height: 20px;
+            margin-top: 8px;
+            margin-left: calc(var(--label-w) + var(--gap));
+        }
+        .bar-axis i {
+            position: absolute;
+            transform: translateX(-50%);
+            font-style: normal;
+            font-size: 0.64rem;
+            font-weight: 300;
+            letter-spacing: 0.04em;
+            color: #8994a1;
+        }
+        @media (max-width: 640px) {
+            .bar-chart { --label-w: 92px; --gap: 10px; }
+            .bar-label { font-size: 0.72rem; }
         }
 
         /* 전체 순위표 — 캔버스로 그려지는 기본 표 대신 직접 만든 표를 써서,
@@ -355,7 +463,7 @@ st.markdown(
            표도 카드와 같은 반투명 유리판 위에 얹습니다. */
         .rank-table-wrap {
             overflow-x: auto;
-            padding: 0.3rem 0.4rem;
+            padding: 0.6rem 0.9rem 0.3rem 0.9rem;
             background: linear-gradient(160deg, rgba(255, 255, 255, 0.58) 0%, rgba(233, 244, 250, 0.38) 100%);
             -webkit-backdrop-filter: blur(14px) saturate(125%);
             backdrop-filter: blur(14px) saturate(125%);
@@ -366,31 +474,36 @@ st.markdown(
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             clip-path: polygon(0 0, 100% 0, 100% 96%, 97% 100%, 0 100%);
         }
-        .rank-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+        .rank-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
         .rank-table thead th {
             text-align: left;
-            color: #545b66;
-            font-size: 0.74rem;
+            color: #667380;
+            font-size: 0.67rem;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-weight: 700;
-            padding: 0.6rem 0.9rem;
-            border-bottom: 1px solid rgba(79, 163, 207, 0.28);
+            letter-spacing: 0.16em;
+            font-weight: 500;
+            padding: 0.55rem 0.95rem 0.75rem 0.95rem;
+            border-bottom: 1px solid rgba(79, 163, 207, 0.22);
             /* 표는 숫자를 읽는 곳이라 무늬를 일부러 넣지 않고 비워 둡니다. */
         }
         .rank-table thead th.num { text-align: right; }
         .rank-table tbody td {
-            padding: 0.62rem 0.9rem;
-            color: #20242b;
-            border-bottom: 1px solid rgba(120, 160, 185, 0.14);
+            padding: 0.82rem 0.95rem;
+            color: #26303c;
+            font-weight: 300;
+            border-bottom: 1px solid rgba(120, 160, 185, 0.11);
         }
+        .rank-table tbody tr:last-child td { border-bottom: none; }
         .rank-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
         .rank-table tbody tr {
             transition: background-color 0.2s ease;
         }
-        .rank-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.5); }
-        .rank-table tbody tr.rank-first td:first-child { border-left: 3px solid #4fa3cf; }
-        .rank-table tbody tr.rank-first td { padding-top: 0.72rem; padding-bottom: 0.72rem; }
+        .rank-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.55); }
+        /* 1위 줄만 살짝 또렷하게 — 숫자를 굵히는 대신 왼쪽에 가는 띠를 둡니다. */
+        .rank-table tbody tr.rank-first td { color: #16202c; font-weight: 400; }
+        .rank-table tbody tr.rank-first td:first-child {
+            box-shadow: inset 2px 0 0 rgba(79, 163, 207, 0.85);
+        }
 
         /* 안내(가이드) 메시지 상자 — 카드와 같은 유리판이되, 왼쪽에 하늘색 띠를 둘러
            눈에 먼저 들어오게 합니다. 오른쪽 위 모서리는 비스듬히 잘랐습니다. */
@@ -613,36 +726,58 @@ st.markdown('<div class="crack-divider scroll-reveal"></div>', unsafe_allow_html
 # ────────────────────────────────────────────────────────────────
 st.markdown('<div class="section-label scroll-reveal">관객수 상위 5편</div>', unsafe_allow_html=True)
 
-top5 = df.sort_values("관객수", ascending=False).head(5).sort_values("관객수", ascending=True)
+top5 = df.sort_values("관객수", ascending=False).head(5)
 
-fig = go.Figure(
-    go.Bar(
-        x=top5["관객수"],
-        y=top5["영화명"],
-        orientation="h",
-        marker=dict(color="#4fa3cf", line=dict(width=0)),
-        width=0.45,
-        hovertemplate="%{y}<br>관객수 %{x:,}명<extra></extra>",
+
+def build_axis_ticks(max_value: int) -> list[int]:
+    """0부터 시작해, 눈금이 4~5개쯤 되도록 보기 좋은 간격으로 끊은 값들을 만듭니다."""
+    if max_value <= 0:
+        return [0, 1]
+    rough_step = max_value / 4
+    magnitude = 10 ** math.floor(math.log10(rough_step))
+    for multiple in (1, 2, 2.5, 5, 10):
+        step = int(magnitude * multiple)
+        if rough_step <= step:
+            break
+    return list(range(0, max_value + step, step))
+
+
+def build_bar_chart_html(chart_df: pd.DataFrame) -> str:
+    """관객수 막대그래프를 직접 HTML로 그립니다. 막대에도 카드와 같은 결을 깔되,
+    막대마다 결을 다른 자리에서 잘라 써서 무늬가 줄줄이 같아 보이지 않게 합니다."""
+    ticks = build_axis_ticks(int(chart_df["관객수"].max()))
+    axis_max = ticks[-1]
+
+    grid_lines = "".join(f'<i style="left:{tick / axis_max * 100:.2f}%"></i>' for tick in ticks)
+    axis_labels = "".join(
+        f'<i style="left:{tick / axis_max * 100:.2f}%">{tick:,}</i>' for tick in ticks
     )
-)
-fig.update_layout(
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(color="#262a30", size=13),
-    margin=dict(l=0, r=20, t=10, b=10),
-    height=280,
-    xaxis=dict(
-        showgrid=True,
-        gridcolor="rgba(38,42,48,0.12)",
-        gridwidth=1,
-        zeroline=False,
-        showline=False,
-        tickformat=",",
-    ),
-    yaxis=dict(showgrid=False, showline=False, zeroline=False),
-    showlegend=False,
-)
-st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+    rows = []
+    for index, row in enumerate(chart_df.itertuples(index=False)):
+        width = row.관객수 / axis_max * 100
+        vein_x = (index * 37 + 12) % 100
+        vein_y = (index * 53 + 20) % 100
+        rows.append(
+            '<div class="bar-row">'
+            f'<div class="bar-label">{html.escape(row.영화명)}</div>'
+            '<div class="bar-track">'
+            f'<div class="bar" style="width:{width:.2f}%;'
+            f"background-position:{vein_x}% {vein_y}%,0 0;"
+            f'animation-delay:{index * 0.08:.2f}s"></div>'
+            f'<div class="bar-value" style="left:{width:.2f}%">{row.관객수:,}</div>'
+            "</div></div>"
+        )
+
+    return (
+        '<div class="bar-chart scroll-reveal">'
+        f'<div class="bar-plot"><div class="bar-grid">{grid_lines}</div>{"".join(rows)}</div>'
+        f'<div class="bar-axis">{axis_labels}</div>'
+        "</div>"
+    )
+
+
+st.markdown(build_bar_chart_html(top5), unsafe_allow_html=True)
 
 st.markdown('<div class="crack-divider scroll-reveal"></div>', unsafe_allow_html=True)
 
