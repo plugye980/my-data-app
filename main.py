@@ -117,6 +117,84 @@ def build_vein_svg() -> str:
     return f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>{body}</svg>"
 
 
+def build_bar_texture_svg() -> str:
+    """막대그래프 전용 결. 막대는 아주 납작해서, 카드와 같은 '길게 흐르는 결'을 쓰면
+    가로로 죽 늘어난 줄무늬처럼 보입니다. 그래서 막대 높이를 비스듬히 가로지르는
+    짧은 획들을 흩뿌려, 어디를 잘라 보아도 결이 눕지 않도록 따로 그립니다."""
+    rng = random.Random(8123)
+    width, height = 2400, 60
+    parts = []
+    for _ in range(38):
+        x = rng.uniform(-40, width)
+        y_start = rng.uniform(-14, height + 14)
+        y_end = y_start + rng.choice((-1, 1)) * rng.uniform(height * 0.5, height * 1.5)
+        points = _wander(rng, (x, y_start), (x + rng.uniform(18, 80), y_end), 4, height * 0.1, height * 0.07)
+        # 대부분은 유리에 빛이 스친 듯한 밝은 획, 일부만 어두운 획을 섞습니다.
+        is_light = rng.random() < 0.72
+        parts.append(
+            (
+                _smooth_path(points),
+                rng.uniform(1.6, 3.6),
+                rng.uniform(0.22, 0.45) if is_light else rng.uniform(0.08, 0.16),
+                "%23ffffff" if is_light else "%232d6785",
+            )
+        )
+    body = "".join(
+        f"<path d='{d}' fill='none' stroke='{color}' stroke-width='{w:.1f}'"
+        f" stroke-opacity='{o:.2f}' stroke-linecap='round'/>"
+        for d, w, o, color in parts
+    )
+    return f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>{body}</svg>"
+
+
+# ── 고딕 장식 ──────────────────────────────────────────────────────
+# 뾰족한 아치와 사엽 문양은 고딕 건축의 대표적인 형태입니다. 지금의 맑고 투명한
+# 느낌을 해치지 않도록, 색을 채우지 않고 가는 선으로만 그려서 아주 옅게 깝니다.
+
+
+def build_quatrefoil_svg(color: str, stroke: float = 1.1, opacity: float = 0.75) -> str:
+    """사엽 문양(quatrefoil) — 반원 잎 네 개가 모인 고딕 장식."""
+    lobe = 11.0  # 안쪽 정사각형의 반변이자 잎의 반지름
+    size = lobe * 4 + stroke * 2
+    center = size / 2
+    path = (
+        f"M{center - lobe:.1f} {center - lobe:.1f}"
+        f"A{lobe:.1f} {lobe:.1f} 0 0 1 {center + lobe:.1f} {center - lobe:.1f}"
+        f"A{lobe:.1f} {lobe:.1f} 0 0 1 {center + lobe:.1f} {center + lobe:.1f}"
+        f"A{lobe:.1f} {lobe:.1f} 0 0 1 {center - lobe:.1f} {center + lobe:.1f}"
+        f"A{lobe:.1f} {lobe:.1f} 0 0 1 {center - lobe:.1f} {center - lobe:.1f}Z"
+    )
+    return (
+        f"<svg xmlns='http://www.w3.org/2000/svg' width='{size:.0f}' height='{size:.0f}'"
+        f" viewBox='0 0 {size:.1f} {size:.1f}'>"
+        f"<path d='{path}' fill='none' stroke='{color}' stroke-width='{stroke}'"
+        f" stroke-opacity='{opacity}'/></svg>"
+    )
+
+
+def build_tracery_svg(color: str) -> str:
+    """첨두아치 트레이서리 — 뾰족한 아치 하나, 그 안의 작은 아치 둘, 그리고 작은 원."""
+    width, height = 120, 150
+    base = height - 4
+    outer = (
+        f"M6 {base}L6 78"
+        f"A{width - 12} {width - 12} 0 0 1 {width // 2} 10"
+        f"A{width - 12} {width - 12} 0 0 1 {width - 6} 78"
+        f"L{width - 6} {base}"
+    )
+    inner_left = f"M22 {base}L22 104A38 38 0 0 1 58 104L58 {base}"
+    inner_right = f"M62 {base}L62 104A38 38 0 0 1 98 104L98 {base}"
+    oculus = "M60 62m-13 0a13 13 0 1 0 26 0a13 13 0 1 0 -26 0"
+    paths = "".join(
+        f"<path d='{d}' fill='none' stroke='{color}' stroke-width='{sw}' stroke-linecap='round'/>"
+        for d, sw in ((outer, 1.6), (inner_left, 1.1), (inner_right, 1.1), (oculus, 1.1))
+    )
+    return (
+        f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'"
+        f" viewBox='0 0 {width} {height}'>{paths}</svg>"
+    )
+
+
 def _css_url(svg: str) -> str:
     """SVG 문자열을 CSS에서 배경 그림으로 쓸 수 있는 형태로 감쌉니다."""
     return f'url("data:image/svg+xml;utf8,{svg}")'
@@ -128,6 +206,10 @@ st.markdown(
     "<style>"
     "@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');"
     f":root{{--vein:{_css_url(build_vein_svg())};"
+    f"--vein-bar:{_css_url(build_bar_texture_svg())};"
+    f"--tracery:{_css_url(build_tracery_svg('%234fa3cf'))};"
+    f"--quatrefoil:{_css_url(build_quatrefoil_svg('%234fa3cf'))};"
+    f"--quatrefoil-brass:{_css_url(build_quatrefoil_svg('%23b8874a', 1.3, 0.9))};"
     "--font:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;}"
     "</style>",
     unsafe_allow_html=True,
@@ -225,8 +307,8 @@ st.markdown(
 
         .app-title {
             font-size: 2.45rem;
-            font-weight: 300;
-            letter-spacing: 0.02em;
+            font-weight: 500;
+            letter-spacing: 0.005em;
             color: #16202c;
             margin-bottom: 0.3rem;
         }
@@ -245,16 +327,27 @@ st.markdown(
             margin: 1.4rem 0 2.0rem 0;
             background: linear-gradient(90deg, transparent 0%, #4fa3cf70 35%, #4fa3cfb0 50%, #4fa3cf70 65%, transparent 100%);
         }
+        /* 구분선 가운데 표식은 고딕의 사엽 문양으로 둡니다. 황동색은 제목 바로 아래
+           첫 구분선 하나에만 쓰고, 나머지는 같은 문양을 하늘색으로 씁니다. */
         .crack-divider::after {
             content: "";
             position: absolute;
-            top: -3px;
+            top: -13px;
             left: 50%;
-            width: 7px;
-            height: 7px;
-            background: #ffffff;
-            border: 1px solid #4fa3cf;
-            transform: translateX(-50%) rotate(45deg);
+            width: 26px;
+            height: 26px;
+            transform: translateX(-50%);
+            /* 문양 뒤에 부드러운 흰 빛을 깔아, 구분선이 문양을 관통하지 않게 합니다.
+               (흐리기는 문양 자체의 선 농도로 조절하고, 이 요소의 opacity는 건드리지
+               않습니다. 요소를 통째로 흐리게 하면 뒤의 선이 비쳐 버립니다.) */
+            background:
+                var(--quatrefoil) center / 15px 15px no-repeat,
+                radial-gradient(closest-side, rgba(253, 254, 255, 0.97) 52%, rgba(253, 254, 255, 0) 100%);
+        }
+        .crack-divider.hero::after {
+            background-image:
+                var(--quatrefoil-brass),
+                radial-gradient(closest-side, rgba(253, 254, 255, 0.97) 52%, rgba(253, 254, 255, 0) 100%);
         }
 
         .section-label {
@@ -278,9 +371,9 @@ st.markdown(
             background-repeat: no-repeat, no-repeat;
             -webkit-backdrop-filter: blur(14px) saturate(125%);
             backdrop-filter: blur(14px) saturate(125%);
-            border: 1px solid rgba(255, 255, 255, 0.85);
+            border: 2px solid rgba(255, 255, 255, 0.92);
             box-shadow:
-                0 0 0 1px rgba(122, 172, 202, 0.16),
+                0 0 0 1px rgba(122, 172, 202, 0.3),
                 0 8px 26px rgba(31, 61, 82, 0.09),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             overflow: hidden;
@@ -289,10 +382,23 @@ st.markdown(
         .kpi-card:hover {
             transform: translateY(-3px);
             box-shadow:
-                0 0 0 1px rgba(122, 172, 202, 0.22),
+                0 0 0 1px rgba(122, 172, 202, 0.4),
                 0 16px 34px rgba(31, 61, 82, 0.13),
                 inset 0 1px 0 rgba(255, 255, 255, 0.95);
         }
+        /* 카드마다 첨두아치 트레이서리를 한 귀퉁이에 아주 옅게 깔아 둡니다.
+           크기와 위치를 카드별로 다르게 두어 나란히 놓인 느낌을 피했습니다. */
+        .kpi-card::after {
+            content: "";
+            position: absolute;
+            z-index: 0;
+            pointer-events: none;
+            background: var(--tracery) center / contain no-repeat;
+            opacity: 0.16;
+        }
+        .kpi-card.card-hero::after { width: 78px; height: 98px; right: 26px; bottom: -14px; }
+        .kpi-card.card-2::after { width: 52px; height: 65px; right: 18px; bottom: -12px; opacity: 0.13; }
+        .kpi-card.card-3::after { width: 44px; height: 55px; left: 20px; bottom: -10px; opacity: 0.13; }
         .kpi-card.card-hero {
             min-height: 168px;
             padding: 1.7rem 1.5rem 1.4rem 1.5rem;
@@ -346,8 +452,8 @@ st.markdown(
             display: inline-block;
             color: #16202c;
             font-size: 1.5rem;
-            font-weight: 400;
-            letter-spacing: 0.01em;
+            font-weight: 600;
+            letter-spacing: 0em;
             margin-bottom: 0.2rem;
             margin-right: 0.6rem;
         }
@@ -378,6 +484,20 @@ st.markdown(
            똑같은 결과 유리 재질을 막대에도 씁니다. 배경에는 눈금선만 둡니다. */
         .bar-chart { --label-w: 150px; --gap: 16px; }
         .bar-plot { position: relative; }
+        /* 그래프 오른쪽 뒤에도 같은 트레이서리를 아주 옅게 한 장. */
+        .bar-plot::after {
+            content: "";
+            position: absolute;
+            z-index: 0;
+            right: 2%;
+            bottom: -6px;
+            width: 66px;
+            height: 82px;
+            pointer-events: none;
+            background: var(--tracery) center / contain no-repeat;
+            opacity: 0.12;
+        }
+        .bar-row { position: relative; z-index: 1; }
         .bar-grid {
             position: absolute;
             left: calc(var(--label-w) + var(--gap));
@@ -412,17 +532,20 @@ st.markdown(
             left: 0;
             top: 0;
             height: 100%;
-            background-image: var(--vein), linear-gradient(100deg, rgba(116, 188, 226, 0.62) 0%, rgba(166, 214, 238, 0.42) 100%);
+            /* 결은 막대 비율에 맞춰 따로 그린 판을 쓰고, 세로 기준으로만 크기를
+               맞춰(auto 150%) 가로로 늘어나지 않게 합니다. */
+            background-image: var(--vein-bar), linear-gradient(100deg, rgba(116, 188, 226, 0.62) 0%, rgba(166, 214, 238, 0.42) 100%);
             background-repeat: no-repeat, no-repeat;
-            background-size: 300% 900%, auto;
+            background-size: auto 150%, auto;
             -webkit-backdrop-filter: blur(6px) saturate(120%);
             backdrop-filter: blur(6px) saturate(120%);
-            border: 1px solid rgba(255, 255, 255, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.88);
             border-left: none;
             box-shadow:
                 0 2px 10px rgba(31, 61, 82, 0.08),
                 inset 0 1px 0 rgba(255, 255, 255, 0.85);
-            clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
+            /* 막대 끝을 고딕의 뾰족한 아치처럼 한 점으로 모읍니다. */
+            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
             animation: growBar 1s cubic-bezier(0.22, 0.8, 0.3, 1) both;
         }
         /* 끝 값을 따로 적지 않으면, 각 막대가 자기 너비까지 자라납니다. */
@@ -462,6 +585,7 @@ st.markdown(
            배경/글자색이 항상 이 화면의 밝은 톤을 그대로 따르도록 했습니다.
            표도 카드와 같은 반투명 유리판 위에 얹습니다. */
         .rank-table-wrap {
+            position: relative;
             overflow-x: auto;
             padding: 0.6rem 0.9rem 0.3rem 0.9rem;
             background: linear-gradient(160deg, rgba(255, 255, 255, 0.58) 0%, rgba(233, 244, 250, 0.38) 100%);
@@ -474,7 +598,20 @@ st.markdown(
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             clip-path: polygon(0 0, 100% 0, 100% 96%, 97% 100%, 0 100%);
         }
-        .rank-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+        /* 표에도 같은 트레이서리를 왼쪽 아래 귀퉁이에 한 장, 아주 옅게. */
+        .rank-table-wrap::after {
+            content: "";
+            position: absolute;
+            z-index: 0;
+            left: 2.5%;
+            bottom: -8px;
+            width: 58px;
+            height: 72px;
+            pointer-events: none;
+            background: var(--tracery) center / contain no-repeat;
+            opacity: 0.1;
+        }
+        .rank-table { position: relative; z-index: 1; width: 100%; border-collapse: collapse; font-size: 0.86rem; }
         .rank-table thead th {
             text-align: left;
             color: #667380;
@@ -594,7 +731,7 @@ st.markdown(
     f'기준일 · {format_date_korean(target_dt)} (한국 시간 기준 어제)</div>',
     unsafe_allow_html=True,
 )
-st.markdown('<div class="crack-divider fade-in"></div>', unsafe_allow_html=True)
+st.markdown('<div class="crack-divider hero fade-in"></div>', unsafe_allow_html=True)
 
 
 # ────────────────────────────────────────────────────────────────
