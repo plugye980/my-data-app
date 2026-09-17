@@ -85,6 +85,10 @@ st.markdown(
             0%, 100% { box-shadow: 0 0 0 0 rgba(184, 135, 74, 0.45); }
             50%      { box-shadow: 0 0 7px 3px rgba(184, 135, 74, 0.32); }
         }
+        @keyframes pulseGold {
+            0%, 100% { opacity: 0.6; box-shadow: 0 0 6px 1px rgba(255, 217, 138, 0.45); }
+            50%      { opacity: 1;   box-shadow: 0 0 10px 3px rgba(255, 217, 138, 0.75); }
+        }
         .fade-in { animation: fadeSlideUp 0.6s ease both; }
 
         /* 스크롤에 따른 애니메이션 — 아래로 스크롤해서 요소가 화면에 들어올 때
@@ -124,9 +128,7 @@ st.markdown(
             margin-bottom: 1.6rem;
         }
 
-        /* 구분선은 기본적으로 하늘색 하나만 씁니다. 제목 바로 아래의 구분선(.hero)에만
-           황동빛 포인트를 아주 살짝 얹어, 화면 전체에서 황동색이 나오는 지점을
-           최소한으로 줄였습니다. */
+        /* 구분선은 하늘색 하나만 씁니다. */
         .crack-divider {
             position: relative;
             height: 1px;
@@ -144,17 +146,58 @@ st.markdown(
             border: 1px solid #4fa3cf;
             transform: translateX(-50%) rotate(45deg);
         }
-        .crack-divider.hero {
-            background: linear-gradient(90deg, transparent 0%, #4fa3cf70 35%, #b8874ac0 50%, #4fa3cf70 65%, transparent 100%);
+
+        /* ── 신전 배너 ──────────────────────────────────────────────
+           참고 이미지의 금속 벽면 구성(위쪽 톱니 몰딩 → 세로 홈이 파인 금색 판 →
+           가로 골 무늬 띠 → 짙은 남색 밑단과 그 위에 얹힌 금테 삼각 페디먼트,
+           그 안의 빛나는 게이지)을 그대로 층층이 재현한 장식 배너입니다. 제목
+           바로 아래, 화면 전체에서 이 한 곳에만 자리 잡은 '건축물'로 두어
+           황동색이 여기저기 흩어지지 않도록 했습니다. */
+        .temple-banner {
+            position: relative;
+            margin: 1.5rem 0 2.1rem 0;
+            border: 1px solid #cdae76;
+            overflow: hidden;
         }
-        .crack-divider.hero::after {
-            border: 1px solid #b8874a;
-            animation: pulseGlow 2.6s ease-in-out infinite;
+        .temple-banner .dentil {
+            height: 7px;
+            background-image: repeating-linear-gradient(90deg, #8a6423 0px, #8a6423 7px, transparent 7px, transparent 15px);
+            opacity: 0.65;
         }
-        /* 참고 이미지 속 금색 삼각 처마(페디먼트) 장식을 오마주해, 다이아몬드 아래에
-           작은 삼각 표식을 하나 더 두었습니다 — 새 지점이 아니라 기존 황동빛 지점을
-           조금 더 구조적으로 표현한 것입니다. */
-        .crack-divider.hero::before {
+        .temple-banner .flute {
+            height: 34px;
+            background-image: repeating-linear-gradient(90deg,
+                #f7ecd4 0px, #f7ecd4 3px,
+                #e7d3a0 3px, #e7d3a0 7px,
+                #fbf5e6 7px, #fbf5e6 10px,
+                #d8bd85 10px, #d8bd85 14px);
+            border-top: 1px solid #cdae7688;
+            border-bottom: 1px solid #cdae7688;
+        }
+        .temple-banner .ridge {
+            height: 9px;
+            background-image: repeating-linear-gradient(180deg, #cdb37a 0px, #cdb37a 2px, #f1e4c4 2px, #f1e4c4 4px);
+        }
+        .temple-banner .base {
+            position: relative;
+            height: 54px;
+            background: linear-gradient(180deg, #1c2733 0%, #10161e 100%);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        /* 삼각 페디먼트 — 바깥쪽(황동) 삼각형 위에 안쪽(남색) 삼각형을 겹쳐
+           테두리가 있는 것처럼 보이게 하는 전통적인 CSS 삼각형 기법입니다. */
+        .pediment {
+            position: relative;
+            width: 0;
+            height: 0;
+            margin-bottom: -1px;
+            border-left: 52px solid transparent;
+            border-right: 52px solid transparent;
+            border-bottom: 46px solid #cdae76;
+        }
+        .pediment::before {
             content: "";
             position: absolute;
             top: 4px;
@@ -162,9 +205,21 @@ st.markdown(
             transform: translateX(-50%);
             width: 0;
             height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 6px solid #b8874a80;
+            border-left: 45px solid transparent;
+            border-right: 45px solid transparent;
+            border-bottom: 39px solid #10161e;
+        }
+        .pediment::after {
+            content: "";
+            position: absolute;
+            top: 26px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 42px;
+            height: 3px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, transparent, #ffd98a 50%, transparent);
+            animation: pulseGold 2.6s ease-in-out infinite;
         }
 
         .section-label {
@@ -447,7 +502,16 @@ st.markdown(
     f'기준일 · {format_date_korean(target_dt)} (한국 시간 기준 어제)</div>',
     unsafe_allow_html=True,
 )
-st.markdown('<div class="crack-divider hero"></div>', unsafe_allow_html=True)
+# 제목 아래에 참고 이미지의 신전 벽면을 그대로 층층이 옮긴 장식 배너를 둡니다.
+st.markdown(
+    '<div class="temple-banner fade-in">'
+    '<div class="dentil"></div>'
+    '<div class="flute"></div>'
+    '<div class="ridge"></div>'
+    '<div class="base"><div class="pediment"></div></div>'
+    "</div>",
+    unsafe_allow_html=True,
+)
 
 
 # ────────────────────────────────────────────────────────────────
