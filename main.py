@@ -9,6 +9,8 @@
 """
 
 import html
+import math
+import random
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
@@ -32,7 +34,158 @@ st.set_page_config(page_title="어제의 박스오피스", layout="wide")
 
 
 # ────────────────────────────────────────────────────────────────
-# 2. 디자인(CSS) — 흔한 사각형 카드 대신, 모서리가 잘려 있거나
+# 2. 무늬 만들기 — 같은 간격으로 반복되는 무늬는 아무리 옅게 깔아도 '자로 잰 듯한'
+#    느낌이 납니다. 그래서 대리석 결처럼, 굵기·간격·길이가 제각각인 선을 코드로
+#    직접 그려서 씁니다. 난수를 쓰지만 씨앗(seed)을 고정했기 때문에 새로고침해도
+#    항상 똑같은 모양이 나옵니다.
+# ────────────────────────────────────────────────────────────────
+
+
+def _smooth_path(points: list[tuple[float, float]]) -> str:
+    """점들을 부드럽게 이어주는 곡선(SVG path) 문자열로 바꿉니다."""
+    path = f"M{points[0][0]:.1f} {points[0][1]:.1f}"
+    for i in range(len(points) - 1):
+        prev_pt = points[i - 1] if i > 0 else points[0]
+        cur_pt, next_pt = points[i], points[i + 1]
+        after_pt = points[i + 2] if i + 2 < len(points) else points[-1]
+        c1 = (cur_pt[0] + (next_pt[0] - prev_pt[0]) / 6, cur_pt[1] + (next_pt[1] - prev_pt[1]) / 6)
+        c2 = (next_pt[0] - (after_pt[0] - cur_pt[0]) / 6, next_pt[1] - (after_pt[1] - cur_pt[1]) / 6)
+        path += f"C{c1[0]:.1f} {c1[1]:.1f} {c2[0]:.1f} {c2[1]:.1f} {next_pt[0]:.1f} {next_pt[1]:.1f}"
+    return path
+
+
+def _wander(rng, start, end, segments, amplitude, drift):
+    """시작점에서 끝점까지, 옆으로 조금씩 흔들리며 흘러가는 점들을 만듭니다."""
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    length = math.hypot(dx, dy)
+    nx, ny = -dy / length, dx / length  # 진행 방향에 수직인 방향
+    points, offset = [], 0.0
+    for i in range(segments + 1):
+        t = i / segments
+        taper = (4 * t * (1 - t)) ** 0.6  # 양 끝으로 갈수록 흔들림이 잦아듭니다.
+        offset = max(-amplitude, min(amplitude, offset + rng.uniform(-drift, drift)))
+        wobble = offset * taper + rng.uniform(-amplitude * 0.12, amplitude * 0.12)
+        points.append((start[0] + dx * t + nx * wobble, start[1] + dy * t + ny * wobble))
+    return points
+
+
+def build_vein_svg() -> str:
+    """대리석 결 — 길게 흐르는 주 맥 몇 가닥과, 거기에 붙지 않은 짧은 실금들."""
+    rng = random.Random(20260917)
+    width, height = 600, 380
+    parts = []
+
+    # 서로 나란하지 않도록 각도를 크게 다르게 둔 주 맥 세 가닥.
+    for start, end, stroke in (
+        ((-40, 300), (660, 60), 1.5),
+        ((-30, 120), (640, 330), 1.1),
+        ((120, -30), (430, 410), 0.9),
+    ):
+        parts.append((_smooth_path(_wander(rng, start, end, 9, 58, 26)), stroke, 0.14))
+        # 주 맥 옆에 잔 맥을 붙이되, 시작·끝을 어긋내어 평행선이 되지 않게 합니다.
+        for _ in range(rng.randint(1, 3)):
+            head = rng.uniform(0.05, 0.4)
+            tail = rng.uniform(0.55, 0.95)
+            branch_start = (
+                start[0] + (end[0] - start[0]) * head + rng.uniform(-40, 40),
+                start[1] + (end[1] - start[1]) * head + rng.uniform(-40, 40),
+            )
+            branch_end = (
+                start[0] + (end[0] - start[0]) * tail + rng.uniform(-70, 70),
+                start[1] + (end[1] - start[1]) * tail + rng.uniform(-70, 70),
+            )
+            parts.append(
+                (
+                    _smooth_path(_wander(rng, branch_start, branch_end, 7, 34, 18)),
+                    rng.uniform(0.4, 0.8),
+                    rng.uniform(0.05, 0.1),
+                )
+            )
+
+    # 아무 데도 닿지 않는 짧은 실금 — 화면이 고르게 덮이지 않도록 한쪽으로 몰아둡니다.
+    for _ in range(5):
+        head = (rng.uniform(-20, 420), rng.uniform(-20, 400))
+        tail = (head[0] + rng.uniform(80, 260), head[1] + rng.uniform(-150, 150))
+        parts.append(
+            (_smooth_path(_wander(rng, head, tail, 6, 26, 14)), rng.uniform(0.35, 0.6), rng.uniform(0.04, 0.08))
+        )
+
+    body = "".join(
+        f"<path d='{d}' fill='none' stroke='%234a86a8' stroke-width='{w:.2f}'"
+        f" stroke-opacity='{o:.3f}' stroke-linecap='round'/>"
+        for d, w, o in parts
+    )
+    return f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>{body}</svg>"
+
+
+def build_bar_svg(seed: int, height: int, color: str, bar_range, gap_range, opacity_range) -> str:
+    """세로 막대가 늘어선 띠 — 폭도 간격도 진하기도 제각각이라 줄자처럼 보이지 않습니다.
+    배너 위쪽의 톱니 몰딩과, 그 아래 금색 판의 세로 홈을 둘 다 이 함수로 만듭니다."""
+    rng = random.Random(seed)
+    width = 1200
+    parts = []
+    x = rng.uniform(0, 8)
+    while x < width:
+        bar_width = rng.uniform(*bar_range)
+        bar_height = height * rng.uniform(0.62, 1.0)
+        parts.append(
+            f"<rect x='{x:.1f}' y='{height - bar_height:.1f}' width='{bar_width:.1f}'"
+            f" height='{bar_height:.1f}' fill='{color}' fill-opacity='{rng.uniform(*opacity_range):.2f}'/>"
+        )
+        x += bar_width + rng.uniform(*gap_range)
+    return (
+        f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'"
+        f" preserveAspectRatio='none'>{''.join(parts)}</svg>"
+    )
+
+
+def build_rings_svg() -> str:
+    """원형 문양 — 정확한 동심원이 아니라 중심과 간격이 조금씩 어긋나고,
+    군데군데 끊겨 있는 호(arc)들로 만듭니다."""
+    rng = random.Random(3301)
+    size = 120
+    center = size / 2
+    parts = []
+    radius = 7.0
+    while radius < size / 2 - 3:
+        cx = center + rng.uniform(-2.2, 2.2)
+        cy = center + rng.uniform(-2.2, 2.2)
+        start_deg = rng.uniform(0, 360)
+        sweep_deg = rng.uniform(150, 345)
+        end_deg = start_deg + sweep_deg
+        x1 = cx + radius * math.cos(math.radians(start_deg))
+        y1 = cy + radius * math.sin(math.radians(start_deg))
+        x2 = cx + radius * math.cos(math.radians(end_deg))
+        y2 = cy + radius * math.sin(math.radians(end_deg))
+        parts.append(
+            f"<path d='M{x1:.1f} {y1:.1f}A{radius:.1f} {radius:.1f} 0 {1 if sweep_deg > 180 else 0} 1"
+            f" {x2:.1f} {y2:.1f}' fill='none' stroke='%234fa3cf'"
+            f" stroke-opacity='{rng.uniform(0.2, 0.5):.2f}' stroke-width='{rng.uniform(0.5, 1.1):.2f}'"
+            f" stroke-linecap='round'/>"
+        )
+        radius += rng.uniform(3.4, 8.2)
+    return f"<svg xmlns='http://www.w3.org/2000/svg' width='{size}' height='{size}'>{''.join(parts)}</svg>"
+
+
+def _css_url(svg: str) -> str:
+    """SVG 문자열을 CSS에서 배경 그림으로 쓸 수 있는 형태로 감쌉니다."""
+    return f'url("data:image/svg+xml;utf8,{svg}")'
+
+
+# 만든 무늬들을 CSS 변수로 한 번만 등록해두고, 아래 스타일에서 가져다 씁니다.
+st.markdown(
+    "<style>:root{"
+    f"--vein:{_css_url(build_vein_svg())};"
+    f"--dentil:{_css_url(build_bar_svg(4711, 9, '%238a6423', (4.5, 9.5), (7.0, 18.0), (0.35, 0.72)))};"
+    f"--flute:{_css_url(build_bar_svg(9091, 34, '%23b08a4a', (0.8, 2.6), (8.0, 26.0), (0.12, 0.42)))};"
+    f"--rings:{_css_url(build_rings_svg())};"
+    "}</style>",
+    unsafe_allow_html=True,
+)
+
+
+# ────────────────────────────────────────────────────────────────
+# 3. 디자인(CSS) — 흔한 사각형 카드 대신, 모서리가 잘려 있거나
 #    가운데에 미세한 균열(선) 효과가 들어간 비대칭 카드를 사용합니다.
 #    배경과 카드가 또렷이 분리되지 않도록 어두운 톤 위에 은은한 색으로만 구분합니다.
 # ────────────────────────────────────────────────────────────────
@@ -149,39 +302,47 @@ st.markdown(
 
         /* ── 신전 배너 ──────────────────────────────────────────────
            참고 이미지의 금속 벽면 구성(위쪽 톱니 몰딩 → 세로 홈이 파인 금색 판 →
-           가로 골 무늬 띠 → 짙은 남색 밑단과 그 위에 얹힌 금테 삼각 페디먼트,
-           그 안의 빛나는 게이지)을 그대로 층층이 재현한 장식 배너입니다. 제목
-           바로 아래, 화면 전체에서 이 한 곳에만 자리 잡은 '건축물'로 두어
-           황동색이 여기저기 흩어지지 않도록 했습니다. */
+           짙은 남색 밑단과 그 위에 얹힌 금테 삼각 페디먼트, 그 안의 빛나는 게이지)을
+           옮겨온 장식입니다. 다만 몰딩과 홈은 일정 간격으로 찍어내지 않고 폭·간격·
+           진하기를 모두 흩뜨렸고, 페디먼트도 한가운데가 아니라 왼쪽으로 치우치게
+           두어 자로 맞춘 느낌을 없앴습니다. */
         .temple-banner {
             position: relative;
-            margin: 1.5rem 0 2.1rem 0;
-            border: 1px solid #cdae76;
-            overflow: hidden;
+            margin: 1.4rem 0 2.0rem 0;
+        }
+        /* 몰딩 두 줄은 양쪽 끝을 흐리게 지워서, 화면을 가로지르는 '막대'가 아니라
+           배경에 묻어 있는 구조물처럼 보이게 합니다. 지워지는 길이를 좌우 다르게
+           두어 가운데 맞춘 느낌도 없앴습니다. */
+        .temple-banner .dentil,
+        .temple-banner .flute {
+            -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 74%, transparent 97%);
+            mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 74%, transparent 97%);
         }
         .temple-banner .dentil {
-            height: 7px;
-            background-image: repeating-linear-gradient(90deg, #8a6423 0px, #8a6423 7px, transparent 7px, transparent 15px);
-            opacity: 0.65;
+            height: 8px;
+            background-image: var(--dentil);
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            opacity: 0.75;
         }
         .temple-banner .flute {
-            height: 34px;
-            background-image: repeating-linear-gradient(90deg,
-                #f7ecd4 0px, #f7ecd4 3px,
-                #e7d3a0 3px, #e7d3a0 7px,
-                #fbf5e6 7px, #fbf5e6 10px,
-                #d8bd85 10px, #d8bd85 14px);
-            border-top: 1px solid #cdae7688;
-            border-bottom: 1px solid #cdae7688;
+            height: 22px;
+            background-image: var(--flute), linear-gradient(180deg, #faf2e2 0%, #eddfbd 100%);
+            background-size: 100% 100%, auto;
+            background-repeat: no-repeat, no-repeat;
+            border-top: 1px solid #cdae7666;
+            border-bottom: 1px solid #cdae7666;
         }
-        .temple-banner .ridge {
-            height: 9px;
-            background-image: repeating-linear-gradient(180deg, #cdb37a 0px, #cdb37a 2px, #f1e4c4 2px, #f1e4c4 4px);
-        }
-        .temple-banner .base {
-            position: relative;
-            height: 54px;
-            background: linear-gradient(180deg, #1c2733 0%, #10161e 100%);
+        /* 짙은 받침대는 화면을 가로지르지 않고, 왼쪽에서 조금 비켜난 자리에만
+           작게 놓입니다 — 페디먼트를 얹기 위한 받침 하나로만 존재합니다. */
+        .temple-banner .plinth {
+            width: 164px;
+            height: 46px;
+            margin-left: 27%;
+            overflow: hidden;
+            background: linear-gradient(180deg, #27374a 0%, #1a2431 100%);
+            border-bottom: 2px solid #cdae76;
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 8% 100%, 0 78%);
             display: flex;
             align-items: flex-end;
             justify-content: center;
@@ -192,10 +353,9 @@ st.markdown(
             position: relative;
             width: 0;
             height: 0;
-            margin-bottom: -1px;
-            border-left: 52px solid transparent;
-            border-right: 52px solid transparent;
-            border-bottom: 46px solid #cdae76;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 34px solid #cdae76;
         }
         .pediment::before {
             content: "";
@@ -205,17 +365,17 @@ st.markdown(
             transform: translateX(-50%);
             width: 0;
             height: 0;
-            border-left: 45px solid transparent;
-            border-right: 45px solid transparent;
-            border-bottom: 39px solid #10161e;
+            border-left: 34px solid transparent;
+            border-right: 34px solid transparent;
+            border-bottom: 29px solid #1a2431;
         }
         .pediment::after {
             content: "";
             position: absolute;
-            top: 26px;
+            top: 22px;
             left: 50%;
             transform: translateX(-50%);
-            width: 42px;
+            width: 34px;
             height: 3px;
             border-radius: 2px;
             background: linear-gradient(90deg, transparent, #ffd98a 50%, transparent);
@@ -232,12 +392,14 @@ st.markdown(
         }
 
         /* 1위 영화 지표 카드 — 세 장의 크기를 일부러 다르게 두어(1:1로 맞춰진 정사각 그리드가
-           아니라) 왼쪽 카드가 더 크고 도드라진 '대표 카드'가 되도록 했습니다. 모서리도
-           서로 다르게 잘라 비대칭을 만들고, 대각선 균열 하나씩을 겹쳐 질감을 줍니다. */
+           아니라) 왼쪽 카드가 더 크고 도드라진 '대표 카드'가 되도록 했습니다.
+           무늬는 대리석 결 한 장을 카드마다 다른 위치·다른 배율로 잘라서 깔았기
+           때문에, 카드끼리 결이 이어지거나 나란히 맞아떨어지지 않습니다. */
         .kpi-card {
             position: relative;
             padding: 1.3rem 1.3rem 1.1rem 1.3rem;
-            background: linear-gradient(155deg, #ffffff 0%, #eff8fb 100%);
+            background-image: var(--vein), linear-gradient(155deg, #ffffff 0%, #eff8fb 100%);
+            background-repeat: no-repeat, no-repeat;
             border: 1px solid #d7e8f0;
             box-shadow: 0 1px 3px rgba(31, 61, 82, 0.06);
             overflow: hidden;
@@ -252,65 +414,20 @@ st.markdown(
             padding: 1.7rem 1.5rem 1.4rem 1.5rem;
             clip-path: polygon(0 0, 100% 0, 100% 100%, 6% 100%, 0 90%);
             box-shadow: 0 6px 18px rgba(79, 163, 207, 0.14);
-        }
-        /* 참고 이미지 상단의 톱니(사선 삼각) 처마 트림을 오마주한 얇은 띠입니다. */
-        .panel-trim {
-            position: relative;
-            z-index: 1;
-            height: 6px;
-            margin: -1.7rem -1.5rem 0.85rem -1.5rem;
-            background-image:
-                linear-gradient(135deg, #4fa3cf 25%, transparent 25.5%),
-                linear-gradient(225deg, #4fa3cf 25%, transparent 25.5%);
-            background-size: 14px 12px;
-            background-position: 0 0, 7px 0;
-            opacity: 0.5;
-        }
-        /* 작은 카드 두 장에는 참고 이미지 속 각진 패널 벽면처럼, 서로 다른 각도로
-           교차하는 결을 얹었습니다. 단순히 한 방향으로 반복되는 무늬보다 훨씬
-           구조물에 가까운 인상을 줍니다. */
-        .kpi-card.card-2, .kpi-card.card-3 {
-            min-height: 118px;
-            background:
-                repeating-linear-gradient(112deg, rgba(79, 163, 207, 0.09) 0px, rgba(79, 163, 207, 0.09) 1px, transparent 1px, transparent 23px),
-                repeating-linear-gradient(64deg, rgba(79, 163, 207, 0.06) 0px, rgba(79, 163, 207, 0.06) 1px, transparent 1px, transparent 29px),
-                linear-gradient(155deg, #ffffff 0%, #eff8fb 100%);
+            background-size: 155% 205%, auto;
+            background-position: -12% 34%, 0 0;
         }
         .kpi-card.card-2 {
+            min-height: 118px;
             clip-path: polygon(0 9%, 90% 0, 100% 0, 100% 100%, 0 100%);
+            background-size: 195% 265%, auto;
+            background-position: 68% 6%, 0 0;
         }
         .kpi-card.card-3 {
+            min-height: 118px;
             clip-path: polygon(0 0, 100% 0, 100% 82%, 90% 100%, 0 100%);
-        }
-
-        .kpi-card::before {
-            content: "";
-            position: absolute;
-            z-index: 0;
-            width: 160%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #4fa3cf88 45%, #4fa3cf88 55%, transparent);
-            top: 55%;
-            left: -30%;
-            transform: rotate(-9deg);
-        }
-        /* 대표 카드 모서리에 동심원 메달(포털/홀로그램 명판) 하나를 둡니다. 화면
-           전체에 은은히 번지게 했던 이전 방식 대신, 참고 이미지의 '벽에 새겨진
-           원형 부조'처럼 테두리가 뚜렷한 작은 명판으로 만들어 더 구조물답게
-           보이도록 했습니다. */
-        .kpi-card.card-hero::after {
-            content: "";
-            position: absolute;
-            top: 14px;
-            right: 14px;
-            z-index: 0;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            pointer-events: none;
-            border: 1px solid rgba(79, 163, 207, 0.45);
-            background-image: repeating-radial-gradient(circle, rgba(79, 163, 207, 0.4) 0px, rgba(79, 163, 207, 0.4) 1px, transparent 1px, transparent 5px);
-            box-shadow: inset 0 0 0 4px #eff8fb, inset 0 0 0 5px rgba(79, 163, 207, 0.3);
+            background-size: 135% 185%, auto;
+            background-position: 24% 82%, 0 0;
         }
         .kpi-label, .kpi-value, .kpi-unit {
             position: relative;
@@ -347,15 +464,15 @@ st.markdown(
             content: "";
             position: absolute;
             z-index: 0;
-            top: -18px;
-            right: 6px;
-            width: 84px;
-            height: 84px;
-            border-radius: 50%;
+            top: -26px;
+            right: 4%;
+            width: 96px;
+            height: 96px;
             pointer-events: none;
-            border: 1px solid rgba(79, 163, 207, 0.35);
-            background-image: repeating-radial-gradient(circle, rgba(79, 163, 207, 0.28) 0px, rgba(79, 163, 207, 0.28) 1px, transparent 1px, transparent 6px);
-            box-shadow: inset 0 0 0 6px #ffffff, inset 0 0 0 7px rgba(79, 163, 207, 0.22);
+            background-image: var(--rings);
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            opacity: 0.8;
         }
         .movie-headline, .rank-badge {
             position: relative;
@@ -401,10 +518,7 @@ st.markdown(
             font-weight: 700;
             padding: 0.6rem 0.9rem;
             border-bottom: 1px solid #bfe0ee;
-            /* 표 머리글에도 같은 교차 결을 아주 옅게. */
-            background-image:
-                repeating-linear-gradient(112deg, rgba(47, 127, 174, 0.06) 0px, rgba(47, 127, 174, 0.06) 1px, transparent 1px, transparent 23px),
-                repeating-linear-gradient(64deg, rgba(47, 127, 174, 0.04) 0px, rgba(47, 127, 174, 0.04) 1px, transparent 1px, transparent 29px);
+            /* 표는 숫자를 읽는 곳이라 무늬를 일부러 넣지 않고 비워 둡니다. */
         }
         .rank-table thead th.num { text-align: right; }
         .rank-table tbody td {
@@ -424,11 +538,11 @@ st.markdown(
         .guide-box {
             position: relative;
             padding: 1.3rem 1.4rem;
-            /* 카드와 같은 교차 결을 얹어 화면 전체의 질감을 통일했습니다. */
-            background:
-                repeating-linear-gradient(112deg, rgba(79, 163, 207, 0.09) 0px, rgba(79, 163, 207, 0.09) 1px, transparent 1px, transparent 23px),
-                repeating-linear-gradient(64deg, rgba(79, 163, 207, 0.06) 0px, rgba(79, 163, 207, 0.06) 1px, transparent 1px, transparent 29px),
-                linear-gradient(160deg, #f3f9fc 0%, #e9f3f8 100%);
+            /* 카드와 같은 대리석 결을, 또 다른 위치에서 잘라 깔았습니다. */
+            background-image: var(--vein), linear-gradient(160deg, #f3f9fc 0%, #e9f3f8 100%);
+            background-repeat: no-repeat, no-repeat;
+            background-size: 170% 240%, auto;
+            background-position: 82% 62%, 0 0;
             border: 1px solid #cfe3ee;
             border-left: 3px solid #4fa3cf;
             clip-path: polygon(0 0, 96% 0, 100% 14%, 100% 100%, 0 100%);
@@ -507,8 +621,7 @@ st.markdown(
     '<div class="temple-banner fade-in">'
     '<div class="dentil"></div>'
     '<div class="flute"></div>'
-    '<div class="ridge"></div>'
-    '<div class="base"><div class="pediment"></div></div>'
+    '<div class="plinth"><div class="pediment"></div></div>'
     "</div>",
     unsafe_allow_html=True,
 )
@@ -624,12 +737,10 @@ card_specs = [
 ]
 for col, card_class, label, value, unit in card_specs:
     with col:
-        # 대표 카드 위쪽에만 톱니 모양 처마 트림을 하나 얹습니다.
         # (문자열을 한 줄로 이어 붙여야 합니다 — 빈 줄이 섞이면 스트림릿의 마크다운
         # 파서가 이어지는 내용을 코드 블록으로 오인해 HTML 태그가 그대로 보입니다.)
-        trim_html = '<div class="panel-trim"></div>' if card_class == "card-hero" else ""
         st.markdown(
-            f'<div class="kpi-card {card_class} scroll-reveal">{trim_html}'
+            f'<div class="kpi-card {card_class} scroll-reveal">'
             f'<div class="kpi-label">{html.escape(label)}</div>'
             f'<div class="kpi-value">{value:,}<span class="kpi-unit">{html.escape(unit)}</span></div>'
             f"</div>",
