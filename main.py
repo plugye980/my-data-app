@@ -151,6 +151,21 @@ st.markdown(
             border: 1px solid #b8874a;
             animation: pulseGlow 2.6s ease-in-out infinite;
         }
+        /* 참고 이미지 속 금색 삼각 처마(페디먼트) 장식을 오마주해, 다이아몬드 아래에
+           작은 삼각 표식을 하나 더 두었습니다 — 새 지점이 아니라 기존 황동빛 지점을
+           조금 더 구조적으로 표현한 것입니다. */
+        .crack-divider.hero::before {
+            content: "";
+            position: absolute;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid #b8874a80;
+        }
 
         .section-label {
             color: #2f7fae;
@@ -183,12 +198,27 @@ st.markdown(
             clip-path: polygon(0 0, 100% 0, 100% 100%, 6% 100%, 0 90%);
             box-shadow: 0 6px 18px rgba(79, 163, 207, 0.14);
         }
-        /* 작은 카드 두 장에는 SF 패널에서 흔히 보이는 잔물결(웨이브) 결을 아주 옅게
-           얹어, 대표 카드의 링 문양과 짝을 이루는 질감을 줍니다. */
+        /* 참고 이미지 상단의 톱니(사선 삼각) 처마 트림을 오마주한 얇은 띠입니다. */
+        .panel-trim {
+            position: relative;
+            z-index: 1;
+            height: 6px;
+            margin: -1.7rem -1.5rem 0.85rem -1.5rem;
+            background-image:
+                linear-gradient(135deg, #4fa3cf 25%, transparent 25.5%),
+                linear-gradient(225deg, #4fa3cf 25%, transparent 25.5%);
+            background-size: 14px 12px;
+            background-position: 0 0, 7px 0;
+            opacity: 0.5;
+        }
+        /* 작은 카드 두 장에는 참고 이미지 속 각진 패널 벽면처럼, 서로 다른 각도로
+           교차하는 결을 얹었습니다. 단순히 한 방향으로 반복되는 무늬보다 훨씬
+           구조물에 가까운 인상을 줍니다. */
         .kpi-card.card-2, .kpi-card.card-3 {
             min-height: 118px;
             background:
-                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='26'><path d='M-6 13 Q 6 1 18 13 T 42 13 T 66 13 T 90 13 T 114 13' fill='none' stroke='%234fa3cf' stroke-width='0.8' stroke-opacity='0.14'/></svg>"),
+                repeating-linear-gradient(112deg, rgba(79, 163, 207, 0.09) 0px, rgba(79, 163, 207, 0.09) 1px, transparent 1px, transparent 23px),
+                repeating-linear-gradient(64deg, rgba(79, 163, 207, 0.06) 0px, rgba(79, 163, 207, 0.06) 1px, transparent 1px, transparent 29px),
                 linear-gradient(155deg, #ffffff 0%, #eff8fb 100%);
         }
         .kpi-card.card-2 {
@@ -209,17 +239,23 @@ st.markdown(
             left: -30%;
             transform: rotate(-9deg);
         }
-        /* 대표 카드 한쪽 구석에 동심원(포털/홀로그램) 문양을 아주 옅게 얹었습니다.
-           참고 이미지 속 원형 구조물에서 따온 장식으로, 튀지 않도록 카드 모서리
-           뒤에서 살짝만 비치게 했습니다. */
+        /* 대표 카드 모서리에 동심원 메달(포털/홀로그램 명판) 하나를 둡니다. 화면
+           전체에 은은히 번지게 했던 이전 방식 대신, 참고 이미지의 '벽에 새겨진
+           원형 부조'처럼 테두리가 뚜렷한 작은 명판으로 만들어 더 구조물답게
+           보이도록 했습니다. */
         .kpi-card.card-hero::after {
             content: "";
             position: absolute;
-            inset: 0;
+            top: 14px;
+            right: 14px;
             z-index: 0;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
             pointer-events: none;
-            background-image: repeating-radial-gradient(circle at 88% 14%, rgba(79, 163, 207, 0.4) 0px, rgba(79, 163, 207, 0.4) 1.4px, transparent 1.4px, transparent 10px);
-            mask-image: radial-gradient(circle at 88% 14%, #000 0%, transparent 70%);
+            border: 1px solid rgba(79, 163, 207, 0.45);
+            background-image: repeating-radial-gradient(circle, rgba(79, 163, 207, 0.4) 0px, rgba(79, 163, 207, 0.4) 1px, transparent 1px, transparent 5px);
+            box-shadow: inset 0 0 0 4px #eff8fb, inset 0 0 0 5px rgba(79, 163, 207, 0.3);
         }
         .kpi-label, .kpi-value, .kpi-unit {
             position: relative;
@@ -245,8 +281,10 @@ st.markdown(
             margin-left: 0.2rem;
         }
 
-        /* 참고 이미지의 원형 포털/홀로그램 구조물을 오마주한 동심원 문양입니다.
-           별도의 장식 레이어(::before)로만 그려서, 실제 글자는 절대 가리지 않게 했습니다. */
+        /* 참고 이미지의 원형 포털/홀로그램 명판을 오마주했습니다. 화면 전체에
+           번지는 대신 테두리가 있는 하나의 메달로 뚜렷하게 그려서, 배경 무늬가
+           아니라 '걸려 있는 구조물'처럼 보이게 했습니다. 별도의 장식 레이어
+           (::before)에만 그려서 실제 글자는 절대 가리지 않습니다. */
         .portal-ring {
             position: relative;
         }
@@ -254,12 +292,15 @@ st.markdown(
             content: "";
             position: absolute;
             z-index: 0;
-            inset: -30px -20px auto auto;
-            width: 200px;
-            height: 200px;
+            top: -18px;
+            right: 6px;
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
             pointer-events: none;
-            background-image: repeating-radial-gradient(circle at 100% 0%, rgba(79, 163, 207, 0.32) 0px, rgba(79, 163, 207, 0.32) 1px, transparent 1px, transparent 8px);
-            mask-image: radial-gradient(circle at 100% 0%, #000 0%, transparent 70%);
+            border: 1px solid rgba(79, 163, 207, 0.35);
+            background-image: repeating-radial-gradient(circle, rgba(79, 163, 207, 0.28) 0px, rgba(79, 163, 207, 0.28) 1px, transparent 1px, transparent 6px);
+            box-shadow: inset 0 0 0 6px #ffffff, inset 0 0 0 7px rgba(79, 163, 207, 0.22);
         }
         .movie-headline, .rank-badge {
             position: relative;
@@ -305,8 +346,10 @@ st.markdown(
             font-weight: 700;
             padding: 0.6rem 0.9rem;
             border-bottom: 1px solid #bfe0ee;
-            /* 표 머리글에도 같은 잔물결 결을 아주 옅게. */
-            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='26'><path d='M-6 13 Q 6 1 18 13 T 42 13 T 66 13 T 90 13 T 114 13' fill='none' stroke='%232f7fae' stroke-width='0.7' stroke-opacity='0.12'/></svg>");
+            /* 표 머리글에도 같은 교차 결을 아주 옅게. */
+            background-image:
+                repeating-linear-gradient(112deg, rgba(47, 127, 174, 0.06) 0px, rgba(47, 127, 174, 0.06) 1px, transparent 1px, transparent 23px),
+                repeating-linear-gradient(64deg, rgba(47, 127, 174, 0.04) 0px, rgba(47, 127, 174, 0.04) 1px, transparent 1px, transparent 29px);
         }
         .rank-table thead th.num { text-align: right; }
         .rank-table tbody td {
@@ -326,9 +369,10 @@ st.markdown(
         .guide-box {
             position: relative;
             padding: 1.3rem 1.4rem;
-            /* 카드와 같은 잔물결 결을 얹어 화면 전체의 질감을 통일했습니다. */
+            /* 카드와 같은 교차 결을 얹어 화면 전체의 질감을 통일했습니다. */
             background:
-                url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='26'><path d='M-6 13 Q 6 1 18 13 T 42 13 T 66 13 T 90 13 T 114 13' fill='none' stroke='%234fa3cf' stroke-width='0.8' stroke-opacity='0.14'/></svg>"),
+                repeating-linear-gradient(112deg, rgba(79, 163, 207, 0.09) 0px, rgba(79, 163, 207, 0.09) 1px, transparent 1px, transparent 23px),
+                repeating-linear-gradient(64deg, rgba(79, 163, 207, 0.06) 0px, rgba(79, 163, 207, 0.06) 1px, transparent 1px, transparent 29px),
                 linear-gradient(160deg, #f3f9fc 0%, #e9f3f8 100%);
             border: 1px solid #cfe3ee;
             border-left: 3px solid #4fa3cf;
@@ -516,13 +560,15 @@ card_specs = [
 ]
 for col, card_class, label, value, unit in card_specs:
     with col:
+        # 대표 카드 위쪽에만 톱니 모양 처마 트림을 하나 얹습니다.
+        # (문자열을 한 줄로 이어 붙여야 합니다 — 빈 줄이 섞이면 스트림릿의 마크다운
+        # 파서가 이어지는 내용을 코드 블록으로 오인해 HTML 태그가 그대로 보입니다.)
+        trim_html = '<div class="panel-trim"></div>' if card_class == "card-hero" else ""
         st.markdown(
-            f"""
-            <div class="kpi-card {card_class} scroll-reveal">
-                <div class="kpi-label">{html.escape(label)}</div>
-                <div class="kpi-value">{value:,}<span class="kpi-unit">{html.escape(unit)}</span></div>
-            </div>
-            """,
+            f'<div class="kpi-card {card_class} scroll-reveal">{trim_html}'
+            f'<div class="kpi-label">{html.escape(label)}</div>'
+            f'<div class="kpi-value">{value:,}<span class="kpi-unit">{html.escape(unit)}</span></div>'
+            f"</div>",
             unsafe_allow_html=True,
         )
 
