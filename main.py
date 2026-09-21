@@ -353,7 +353,11 @@ st.markdown(
                 0 8px 26px rgba(31, 61, 82, 0.09),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             overflow: hidden;
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            transition:
+                transform 0.25s ease,
+                box-shadow 0.25s ease,
+                min-height 0.3s ease,
+                padding 0.3s ease;
         }
         .kpi-card:hover {
             transform: translateY(-3px);
@@ -362,6 +366,17 @@ st.markdown(
                 0 16px 34px rgba(31, 61, 82, 0.13),
                 inset 0 1px 0 rgba(255, 255, 255, 0.95);
         }
+        /* 마우스를 올리면 작은 카드도 대표 카드만 한 크기로 자랍니다. 한 줄의 높이는
+           이미 대표 카드가 정해 두었기 때문에, 작은 카드가 그만큼 커져도 아래 내용이
+           밀리지 않습니다. 대표 카드는 이미 그 크기라 아주 살짝만 키웁니다. */
+        .kpi-card.card-2:hover,
+        .kpi-card.card-3:hover {
+            min-height: 168px;
+            padding: 1.7rem 1.5rem 1.4rem 1.5rem;
+        }
+        .kpi-card.card-2:hover .kpi-value,
+        .kpi-card.card-3:hover .kpi-value { font-size: 2.6rem; }
+        .kpi-card.card-hero:hover { transform: translateY(-3px) scale(1.015); }
         /* 마우스를 올리면 유리 위로 빛이 한 번 스칩니다. */
         .kpi-card::after {
             content: "";
@@ -427,6 +442,7 @@ st.markdown(
             font-weight: 500;
             letter-spacing: -0.01em;
             font-variant-numeric: tabular-nums;
+            transition: font-size 0.3s ease;
         }
         .kpi-card.card-hero .kpi-value { font-size: 2.6rem; }
         .kpi-unit {
