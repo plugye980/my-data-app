@@ -340,8 +340,13 @@ st.markdown(
            모서리의 밝은 선은 유리 단면에 빛이 걸린 느낌을 냅니다.
            대리석 결은 한 장을 카드마다 다른 위치에서 잘라 쓰되, 배율은 비슷하게
            맞춰 카드별로 결의 밀도가 들쭉날쭉하지 않게 했습니다. */
+        /* 카드가 커질 자리를 미리 잡아 두는 빈 칸입니다. 평소에는 카드가 작게
+           들어앉아 아래가 남고, 마우스를 올려 카드가 자라면 그 남은 자리를 채웁니다.
+           덕분에 카드가 커져도 아래 내용이 밀려 내려가지 않습니다. */
+        .kpi-slot { min-height: 178px; }
         .kpi-card {
             position: relative;
+            min-height: 118px;
             padding: 1.3rem 1.3rem 1.1rem 1.3rem;
             background-image: var(--vein), linear-gradient(155deg, rgba(255, 255, 255, 0.62) 0%, rgba(233, 244, 250, 0.42) 100%);
             background-repeat: no-repeat, no-repeat;
@@ -359,24 +364,18 @@ st.markdown(
                 min-height 0.3s ease,
                 padding 0.3s ease;
         }
+        /* 마우스가 올라간 카드 한 장만 커집니다. 나머지는(첫 번째 카드까지 포함해)
+           평소 크기 그대로 있습니다. */
         .kpi-card:hover {
             transform: translateY(-3px);
+            min-height: 168px;
+            padding: 1.7rem 1.5rem 1.4rem 1.5rem;
             box-shadow:
                 0 0 0 1px rgba(122, 172, 202, 0.4),
                 0 16px 34px rgba(31, 61, 82, 0.13),
                 inset 0 1px 0 rgba(255, 255, 255, 0.95);
         }
-        /* 마우스를 올리면 작은 카드도 대표 카드만 한 크기로 자랍니다. 한 줄의 높이는
-           이미 대표 카드가 정해 두었기 때문에, 작은 카드가 그만큼 커져도 아래 내용이
-           밀리지 않습니다. 대표 카드는 이미 그 크기라 아주 살짝만 키웁니다. */
-        .kpi-card.card-2:hover,
-        .kpi-card.card-3:hover {
-            min-height: 168px;
-            padding: 1.7rem 1.5rem 1.4rem 1.5rem;
-        }
-        .kpi-card.card-2:hover .kpi-value,
-        .kpi-card.card-3:hover .kpi-value { font-size: 2.6rem; }
-        .kpi-card.card-hero:hover { transform: translateY(-3px) scale(1.015); }
+        .kpi-card:hover .kpi-value { font-size: 2.6rem; }
         /* 마우스를 올리면 유리 위로 빛이 한 번 스칩니다. */
         .kpi-card::after {
             content: "";
@@ -404,14 +403,11 @@ st.markdown(
         }
         .kpi-card:hover .kpi-hint { opacity: 1; transform: translateY(0); }
         .kpi-card.card-hero {
-            min-height: 168px;
-            padding: 1.7rem 1.5rem 1.4rem 1.5rem;
             clip-path: polygon(0 0, 100% 0, 100% 100%, 6% 100%, 0 90%);
             background-size: 205% 250%, auto;
             background-position: 12% 88%, 0 0;
         }
         .kpi-card.card-2 {
-            min-height: 118px;
             clip-path: polygon(0 9%, 90% 0, 100% 0, 100% 100%, 0 100%);
             background-size: 195% 265%, auto;
             background-position: 68% 6%, 0 0;
@@ -419,7 +415,6 @@ st.markdown(
         /* 3번 카드는 결이 한 점으로 모이는 부분을 피해, 선들이 서로 떨어져 흐르는
            구간을 오른쪽에서 잘라 씁니다. */
         .kpi-card.card-3 {
-            min-height: 118px;
             clip-path: polygon(0 0, 100% 0, 100% 82%, 90% 100%, 0 100%);
             background-size: 230% 210%, auto;
             background-position: 88% 16%, 0 0;
@@ -444,7 +439,6 @@ st.markdown(
             font-variant-numeric: tabular-nums;
             transition: font-size 0.3s ease;
         }
-        .kpi-card.card-hero .kpi-value { font-size: 2.6rem; }
         .kpi-unit {
             font-size: 0.85rem;
             color: #78828f;
@@ -890,11 +884,12 @@ for col, card_class, label, value, unit, hint in card_specs:
         # (문자열을 한 줄로 이어 붙여야 합니다 — 빈 줄이 섞이면 스트림릿의 마크다운
         # 파서가 이어지는 내용을 코드 블록으로 오인해 HTML 태그가 그대로 보입니다.)
         st.markdown(
-            f'<div class="kpi-card {card_class} scroll-reveal">'
+            f'<div class="kpi-slot scroll-reveal">'
+            f'<div class="kpi-card {card_class}">'
             f'<div class="kpi-label">{html.escape(label)}</div>'
             f'<div class="kpi-value">{value:,}<span class="kpi-unit">{html.escape(unit)}</span></div>'
             f'<div class="kpi-hint">{html.escape(hint)}</div>'
-            f"</div>",
+            f"</div></div>",
             unsafe_allow_html=True,
         )
 
