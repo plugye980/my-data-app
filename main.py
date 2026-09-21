@@ -109,10 +109,12 @@ def build_vein_svg() -> str:
             (_smooth_path(_wander(rng, head, tail, 6, 26, 14)), rng.uniform(0.35, 0.6), rng.uniform(0.04, 0.08))
         )
 
+    # 결마다 청록·보라·분홍을 돌려 써서, 빛이 갈라진 것처럼 보이게 합니다.
+    hues = ("%2358bcd6", "%238f86d8", "%23d283bd")
     body = "".join(
-        f"<path d='{d}' fill='none' stroke='%234a86a8' stroke-width='{w:.2f}'"
+        f"<path d='{d}' fill='none' stroke='{hues[i % len(hues)]}' stroke-width='{w:.2f}'"
         f" stroke-opacity='{o:.3f}' stroke-linecap='round'/>"
-        for d, w, o in parts
+        for i, (d, w, o) in enumerate(parts)
     )
     return f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>{body}</svg>"
 
@@ -172,6 +174,93 @@ def build_quatrefoil_svg(color: str, stroke: float = 1.1, opacity: float = 0.75)
     )
 
 
+# ── 빛과 글리치 ────────────────────────────────────────────────────
+# 배경은 아래쪽 한 점에서 빛이 터지고, 그 빛이 가느다란 줄기로 퍼지며, 그 위로
+# 구슬이 이어진 호가 지나가는 구성입니다. 여기에 아주 드문드문 어긋난 네모
+# 조각(글리치)을 섞어 화면이 매끈하기만 하지 않도록 합니다.
+
+
+def build_ray_svg() -> str:
+    """아래쪽 한 점에서 위로 뻗어 나가는 가느다란 빛줄기."""
+    rng = random.Random(77)
+    width, height = 1400, 900
+    focus_x, focus_y = width * 0.5, height * 0.86
+    hues = ("%23bfe9f5", "%23d3c4f2", "%23f4c2e0", "%23f7ecd0", "%23ffffff")
+    parts = []
+    for _ in range(26):
+        angle = rng.uniform(-170, -10)  # 위쪽으로만 퍼지게
+        length = rng.uniform(height * 0.45, height * 1.25)
+        spread = rng.uniform(0.25, 1.7)  # 줄기 굵기(도 단위)
+        left = math.radians(angle - spread / 2)
+        right = math.radians(angle + spread / 2)
+        parts.append(
+            f"<path d='M{focus_x:.0f} {focus_y:.0f}"
+            f"L{focus_x + math.cos(left) * length:.0f} {focus_y + math.sin(left) * length:.0f}"
+            f"L{focus_x + math.cos(right) * length:.0f} {focus_y + math.sin(right) * length:.0f}Z'"
+            f" fill='{rng.choice(hues)}' fill-opacity='{rng.uniform(0.05, 0.19):.2f}'/>"
+        )
+    return (
+        f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'"
+        f" preserveAspectRatio='none'>{''.join(parts)}</svg>"
+    )
+
+
+def build_arc_svg() -> str:
+    """참고 이미지의 케이블 같은 호 — 가는 선 위에 짧은 마디가 띄엄띄엄 얹힙니다."""
+    rng = random.Random(31)
+    width, height = 1400, 900
+    parts = []
+    for cx_r, cy_r, radius_r, start_deg, end_deg, opacity in (
+        (0.50, 1.28, 0.62, 196, 344, 0.30),
+        (0.50, 1.40, 0.80, 204, 336, 0.22),
+        (0.46, 1.16, 0.46, 210, 330, 0.18),
+    ):
+        cx, cy, radius = cx_r * width, cy_r * height, radius_r * width
+        x0 = cx + radius * math.cos(math.radians(start_deg))
+        y0 = cy + radius * math.sin(math.radians(start_deg))
+        x1 = cx + radius * math.cos(math.radians(end_deg))
+        y1 = cy + radius * math.sin(math.radians(end_deg))
+        path = f"M{x0:.0f} {y0:.0f}A{radius:.0f} {radius:.0f} 0 0 1 {x1:.0f} {y1:.0f}"
+        parts.append(
+            f"<path d='{path}' fill='none' stroke='%23b9c9b0'"
+            f" stroke-opacity='{opacity:.2f}' stroke-width='2.2'/>"
+        )
+        # 호를 따라 마디를 불규칙한 간격으로 얹습니다.
+        dashes, walked = [], rng.uniform(10, 60)
+        arc_length = math.radians(end_deg - start_deg) * radius
+        while walked < arc_length:
+            segment = rng.uniform(7, 20)
+            dashes += [f"{segment:.0f}", f"{rng.uniform(22, 64):.0f}"]
+            walked += segment + 40
+        parts.append(
+            f"<path d='{path}' fill='none' stroke='%23cfe0c2'"
+            f" stroke-opacity='{opacity + 0.2:.2f}' stroke-width='6'"
+            f" stroke-dasharray='{' '.join(dashes)}' stroke-linecap='butt'/>"
+        )
+    return (
+        f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'"
+        f" preserveAspectRatio='none'>{''.join(parts)}</svg>"
+    )
+
+
+def build_glitch_svg() -> str:
+    """어긋난 네모 조각 — 청록과 분홍을 살짝 비껴 겹쳐 색이 번진 것처럼 보이게 합니다."""
+    rng = random.Random(404)
+    width, height = 600, 380
+    parts = []
+    for _ in range(14):
+        x, y = rng.uniform(-20, width), rng.uniform(-10, height)
+        w, h = rng.uniform(10, 74), rng.uniform(1.5, 7)
+        offset = rng.uniform(1.5, 4)
+        parts.append(
+            f"<rect x='{x:.0f}' y='{y:.0f}' width='{w:.0f}' height='{h:.1f}'"
+            f" fill='%2360d6ea' fill-opacity='{rng.uniform(0.05, 0.13):.2f}'/>"
+            f"<rect x='{x + offset:.0f}' y='{y + offset * 0.5:.0f}' width='{w:.0f}' height='{h:.1f}'"
+            f" fill='%23ef8fd0' fill-opacity='{rng.uniform(0.04, 0.11):.2f}'/>"
+        )
+    return f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>{''.join(parts)}</svg>"
+
+
 def _css_url(svg: str) -> str:
     """SVG 문자열을 CSS에서 배경 그림으로 쓸 수 있는 형태로 감쌉니다."""
     return f'url("data:image/svg+xml;utf8,{svg}")'
@@ -184,8 +273,11 @@ st.markdown(
     "@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');"
     f":root{{--vein:{_css_url(build_vein_svg())};"
     f"--vein-bar:{_css_url(build_bar_texture_svg())};"
-    f"--quatrefoil:{_css_url(build_quatrefoil_svg('%234fa3cf'))};"
-    f"--quatrefoil-brass:{_css_url(build_quatrefoil_svg('%23b8874a', 1.3, 0.9))};"
+    f"--rays:{_css_url(build_ray_svg())};"
+    f"--arcs:{_css_url(build_arc_svg())};"
+    f"--glitch:{_css_url(build_glitch_svg())};"
+    f"--quatrefoil:{_css_url(build_quatrefoil_svg('%236fc7dd'))};"
+    f"--quatrefoil-brass:{_css_url(build_quatrefoil_svg('%23d9b877', 1.3, 0.95))};"
     "--font:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;}"
     "</style>",
     unsafe_allow_html=True,
@@ -200,11 +292,13 @@ st.markdown(
 st.markdown(
     """
     <style>
-        /* 배경은 순백을 기본으로 하고, 색이 있는 빛 번짐은 별도의 층(::after)에서
-           천천히 움직이게 만들어 화면이 완전히 정지해 보이지 않도록 합니다.
-           이 빛 번짐이 있어야 위에 얹은 유리판들이 '무언가를 비치게' 됩니다. */
+        /* 배경은 아래쪽 한 점에서 빛이 터지고, 그 둘레로 청록·보라·분홍이 번지는
+           무지갯빛 화면입니다. 이 빛이 있어야 위에 얹은 유리판들이 무언가를 비칩니다. */
         html, body, [data-testid="stAppViewContainer"] {
-            background: #fdfeff;
+            background:
+                radial-gradient(58% 42% at 50% 92%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 70%),
+                linear-gradient(180deg, #edf6fc 0%, #f7fbfe 58%, #ffffff 100%);
+            background-attachment: fixed;
             color: #20242b;
         }
         html, body, [data-testid="stAppViewContainer"], .block-container,
@@ -215,8 +309,7 @@ st.markdown(
         [data-testid="stHeader"] { background: transparent; }
         .block-container { padding-top: 3.2rem; padding-bottom: 4rem; max-width: 1180px; }
 
-        /* 크게 번진 색 덩어리들이 천천히 떠다니는 배경 층 — 유리판 뒤에서 흐릿하게
-           비쳐 보이는 것이 이 층입니다. */
+        /* 청록·보라·분홍이 크게 번진 층. 천천히 떠다녀 화면이 멈춰 보이지 않게 합니다. */
         [data-testid="stAppViewContainer"]::after {
             content: "";
             position: fixed;
@@ -225,12 +318,24 @@ st.markdown(
             z-index: 0;
             filter: blur(22px);
             background:
-                radial-gradient(38% 42% at 10% 8%, rgba(158, 211, 238, 0.42) 0%, transparent 70%),
-                radial-gradient(30% 34% at 88% 4%, rgba(245, 220, 178, 0.55) 0%, transparent 72%),
-                radial-gradient(36% 42% at 74% 40%, rgba(178, 215, 238, 0.3) 0%, transparent 72%),
-                radial-gradient(42% 38% at 18% 70%, rgba(196, 222, 240, 0.32) 0%, transparent 70%),
-                radial-gradient(34% 30% at 58% 88%, rgba(230, 221, 240, 0.3) 0%, transparent 72%);
+                radial-gradient(40% 40% at 14% 12%, rgba(150, 225, 240, 0.5) 0%, transparent 70%),
+                radial-gradient(38% 40% at 86% 8%, rgba(205, 180, 242, 0.5) 0%, transparent 72%),
+                radial-gradient(36% 36% at 74% 50%, rgba(244, 178, 216, 0.4) 0%, transparent 72%),
+                radial-gradient(42% 38% at 20% 62%, rgba(168, 222, 240, 0.38) 0%, transparent 70%),
+                radial-gradient(30% 26% at 62% 86%, rgba(247, 236, 208, 0.42) 0%, transparent 72%);
             animation: driftGlow 26s ease-in-out infinite alternate;
+        }
+        /* 아래쪽 빛에서 퍼지는 줄기와, 그 위를 지나가는 구슬 이어진 호. */
+        .sky-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image: var(--rays), var(--arcs);
+            background-size: 100% 100%, 100% 100%;
+            background-repeat: no-repeat, no-repeat;
+            background-position: center bottom, center bottom;
+            opacity: 0.85;
         }
         /* 화면 전체에 아주 옅은 종이 질감(노이즈)을 얹어, 색면이 평평해 보이지 않게 합니다. */
         [data-testid="stAppViewContainer"]::before {
@@ -301,7 +406,7 @@ st.markdown(
             position: relative;
             height: 1px;
             margin: 1.4rem 0 2.0rem 0;
-            background: linear-gradient(90deg, transparent 0%, #4fa3cf70 35%, #4fa3cfb0 50%, #4fa3cf70 65%, transparent 100%);
+            background: linear-gradient(90deg, transparent 0%, #7ad3e370 22%, #a99ae6b0 48%, #e9a3ceb0 68%, transparent 100%);
         }
         /* 구분선 가운데 표식은 고딕의 사엽 문양으로 둡니다. 황동색은 제목 바로 아래
            첫 구분선 하나에만 쓰고, 나머지는 같은 문양을 하늘색으로 씁니다. */
@@ -327,7 +432,7 @@ st.markdown(
         }
 
         .section-label {
-            color: #4a8fb8;
+            color: #7b86c4;
             font-size: 0.72rem;
             font-weight: 500;
             text-transform: uppercase;
@@ -348,13 +453,14 @@ st.markdown(
             position: relative;
             min-height: 118px;
             padding: 1.3rem 1.3rem 1.1rem 1.3rem;
-            background-image: var(--vein), linear-gradient(155deg, rgba(255, 255, 255, 0.62) 0%, rgba(233, 244, 250, 0.42) 100%);
-            background-repeat: no-repeat, no-repeat;
+            /* 결 위에 어긋난 네모 조각(글리치)을 아주 드문드문 얹습니다. */
+            background-image: var(--glitch), var(--vein), linear-gradient(155deg, rgba(255, 255, 255, 0.62) 0%, rgba(238, 240, 252, 0.42) 100%);
+            background-repeat: no-repeat, no-repeat, no-repeat;
             -webkit-backdrop-filter: blur(14px) saturate(125%);
             backdrop-filter: blur(14px) saturate(125%);
             border: 2px solid rgba(255, 255, 255, 0.92);
             box-shadow:
-                0 0 0 1px rgba(122, 172, 202, 0.3),
+                0 0 0 1px rgba(163, 168, 224, 0.32),
                 0 8px 26px rgba(31, 61, 82, 0.09),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             overflow: hidden;
@@ -371,7 +477,7 @@ st.markdown(
             min-height: 168px;
             padding: 1.7rem 1.5rem 1.4rem 1.5rem;
             box-shadow:
-                0 0 0 1px rgba(122, 172, 202, 0.4),
+                0 0 0 1px rgba(163, 168, 224, 0.45),
                 0 16px 34px rgba(31, 61, 82, 0.13),
                 inset 0 1px 0 rgba(255, 255, 255, 0.95);
         }
@@ -404,20 +510,20 @@ st.markdown(
         .kpi-card:hover .kpi-hint { opacity: 1; transform: translateY(0); }
         .kpi-card.card-hero {
             clip-path: polygon(0 0, 100% 0, 100% 100%, 6% 100%, 0 90%);
-            background-size: 205% 250%, auto;
-            background-position: 12% 88%, 0 0;
+            background-size: 150% 190%, 205% 250%, auto;
+            background-position: 18% 30%, 12% 88%, 0 0;
         }
         .kpi-card.card-2 {
             clip-path: polygon(0 9%, 90% 0, 100% 0, 100% 100%, 0 100%);
-            background-size: 195% 265%, auto;
-            background-position: 68% 6%, 0 0;
+            background-size: 175% 210%, 195% 265%, auto;
+            background-position: 74% 72%, 68% 6%, 0 0;
         }
         /* 3번 카드는 결이 한 점으로 모이는 부분을 피해, 선들이 서로 떨어져 흐르는
            구간을 오른쪽에서 잘라 씁니다. */
         .kpi-card.card-3 {
             clip-path: polygon(0 0, 100% 0, 100% 82%, 90% 100%, 0 100%);
-            background-size: 230% 210%, auto;
-            background-position: 88% 16%, 0 0;
+            background-size: 160% 200%, 230% 210%, auto;
+            background-position: 36% 84%, 88% 16%, 0 0;
         }
         .kpi-label, .kpi-value, .kpi-unit {
             position: relative;
@@ -497,7 +603,7 @@ st.markdown(
             top: 0;
             bottom: 0;
             width: 1px;
-            background: rgba(90, 130, 160, 0.13);
+            background: rgba(140, 146, 196, 0.16);
         }
         .bar-row { display: flex; align-items: center; gap: var(--gap); height: 50px; }
         .bar-label {
@@ -520,7 +626,7 @@ st.markdown(
             height: 100%;
             /* 결은 막대 비율에 맞춰 따로 그린 판을 쓰고, 세로 기준으로만 크기를
                맞춰(auto 150%) 가로로 늘어나지 않게 합니다. */
-            background-image: var(--vein-bar), linear-gradient(100deg, rgba(116, 188, 226, 0.62) 0%, rgba(166, 214, 238, 0.42) 100%);
+            background-image: var(--vein-bar), linear-gradient(100deg, rgba(120, 216, 235, 0.68) 0%, rgba(180, 176, 240, 0.6) 46%, rgba(240, 176, 214, 0.5) 100%);
             background-repeat: no-repeat, no-repeat;
             background-size: auto 150%, auto;
             -webkit-backdrop-filter: blur(6px) saturate(120%);
@@ -577,7 +683,7 @@ st.markdown(
             backdrop-filter: blur(12px) saturate(130%);
             border: 1px solid rgba(255, 255, 255, 0.92);
             box-shadow:
-                0 0 0 1px rgba(122, 172, 202, 0.22),
+                0 0 0 1px rgba(163, 168, 224, 0.24),
                 0 10px 26px rgba(31, 61, 82, 0.15);
             opacity: 0;
             visibility: hidden;
@@ -617,12 +723,12 @@ st.markdown(
             position: relative;
             overflow-x: auto;
             padding: 0.6rem 0.9rem 0.3rem 0.9rem;
-            background: linear-gradient(160deg, rgba(255, 255, 255, 0.58) 0%, rgba(233, 244, 250, 0.38) 100%);
+            background: linear-gradient(160deg, rgba(255, 255, 255, 0.58) 0%, rgba(238, 240, 252, 0.38) 100%);
             -webkit-backdrop-filter: blur(14px) saturate(125%);
             backdrop-filter: blur(14px) saturate(125%);
             border: 1px solid rgba(255, 255, 255, 0.85);
             box-shadow:
-                0 0 0 1px rgba(122, 172, 202, 0.14),
+                0 0 0 1px rgba(163, 168, 224, 0.16),
                 0 8px 26px rgba(31, 61, 82, 0.07),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             clip-path: polygon(0 0, 100% 0, 100% 96%, 97% 100%, 0 100%);
@@ -632,7 +738,7 @@ st.markdown(
            숫자를 읽을 때 열이 눈으로 구분되게 해줍니다. */
         .rank-table th + th,
         .rank-table td + td {
-            border-left: 1px solid rgba(120, 160, 185, 0.1);
+            border-left: 1px solid rgba(150, 154, 200, 0.12);
         }
         .rank-table thead th {
             text-align: left;
@@ -642,7 +748,7 @@ st.markdown(
             letter-spacing: 0.16em;
             font-weight: 500;
             padding: 0.55rem 0.95rem 0.75rem 0.95rem;
-            border-bottom: 1px solid rgba(79, 163, 207, 0.22);
+            border-bottom: 1px solid rgba(150, 150, 210, 0.26);
             /* 표는 숫자를 읽는 곳이라 무늬를 일부러 넣지 않고 비워 둡니다. */
         }
         .rank-table thead th.num { text-align: right; }
@@ -650,7 +756,7 @@ st.markdown(
             padding: 0.82rem 0.95rem;
             color: #26303c;
             font-weight: 300;
-            border-bottom: 1px solid rgba(120, 160, 185, 0.11);
+            border-bottom: 1px solid rgba(150, 154, 200, 0.13);
         }
         .rank-table tbody tr:last-child td { border-bottom: none; }
         .rank-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -669,7 +775,7 @@ st.markdown(
             top: 5px;
             bottom: 5px;
             width: 2px;
-            background: rgba(79, 163, 207, 0.85);
+            background: linear-gradient(180deg, #7ad3e3 0%, #a99ae6 55%, #e9a3ce 100%);
             transform: scaleY(0);
             transition: transform 0.2s ease;
         }
@@ -684,16 +790,16 @@ st.markdown(
             position: relative;
             padding: 1.3rem 1.4rem;
             /* 카드와 같은 대리석 결을, 또 다른 위치에서 잘라 깔았습니다. */
-            background-image: var(--vein), linear-gradient(160deg, rgba(255, 255, 255, 0.6) 0%, rgba(226, 240, 248, 0.45) 100%);
+            background-image: var(--vein), linear-gradient(160deg, rgba(255, 255, 255, 0.6) 0%, rgba(236, 238, 251, 0.45) 100%);
             background-repeat: no-repeat, no-repeat;
             background-size: 200% 260%, auto;
             background-position: 82% 62%, 0 0;
             -webkit-backdrop-filter: blur(14px) saturate(125%);
             backdrop-filter: blur(14px) saturate(125%);
             border: 1px solid rgba(255, 255, 255, 0.85);
-            border-left: 3px solid rgba(79, 163, 207, 0.85);
+            border-left: 3px solid rgba(169, 154, 230, 0.85);
             box-shadow:
-                0 0 0 1px rgba(122, 172, 202, 0.14),
+                0 0 0 1px rgba(163, 168, 224, 0.16),
                 0 8px 26px rgba(31, 61, 82, 0.08),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             clip-path: polygon(0 0, 96% 0, 100% 14%, 100% 100%, 0 100%);
@@ -701,7 +807,7 @@ st.markdown(
             line-height: 1.65;
         }
         .guide-title {
-            color: #2f7fae;
+            color: #6f7cc0;
             font-weight: 700;
             margin-bottom: 0.5rem;
             font-size: 1.0rem;
@@ -760,6 +866,9 @@ def render_guide(title: str, lines: list[str]) -> None:
 # 5. 화면 상단 — 제목과 날짜
 # ────────────────────────────────────────────────────────────────
 target_dt = get_yesterday_kst()
+
+# 빛줄기와 호를 담은 배경 층. 화면에 딱 한 번만 깔면 됩니다.
+st.markdown('<div class="sky-layer"></div>', unsafe_allow_html=True)
 
 st.markdown('<div class="app-title fade-in">어제의 박스오피스</div>', unsafe_allow_html=True)
 st.markdown(
