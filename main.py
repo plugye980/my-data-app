@@ -175,73 +175,8 @@ def build_quatrefoil_svg(color: str, stroke: float = 1.1, opacity: float = 0.75)
     )
 
 
-# ── 빛과 글리치 ────────────────────────────────────────────────────
-# 배경은 아래쪽 한 점에서 빛이 터지고, 그 빛이 가느다란 줄기로 퍼지며, 그 위로
-# 구슬이 이어진 호가 지나가는 구성입니다. 여기에 아주 드문드문 어긋난 네모
-# 조각(글리치)을 섞어 화면이 매끈하기만 하지 않도록 합니다.
-
-
-def build_ray_svg() -> str:
-    """아래쪽 한 점에서 위로 뻗어 나가는 가느다란 빛줄기."""
-    rng = random.Random(77)
-    width, height = 1400, 900
-    focus_x, focus_y = width * 0.5, height * 0.86
-    hues = ("%23bfe9f5", "%23d3c4f2", "%23f4c2e0", "%23f7ecd0", "%23ffffff")
-    parts = []
-    for _ in range(26):
-        angle = rng.uniform(-170, -10)  # 위쪽으로만 퍼지게
-        length = rng.uniform(height * 0.45, height * 1.25)
-        spread = rng.uniform(0.25, 1.7)  # 줄기 굵기(도 단위)
-        left = math.radians(angle - spread / 2)
-        right = math.radians(angle + spread / 2)
-        parts.append(
-            f"<path d='M{focus_x:.0f} {focus_y:.0f}"
-            f"L{focus_x + math.cos(left) * length:.0f} {focus_y + math.sin(left) * length:.0f}"
-            f"L{focus_x + math.cos(right) * length:.0f} {focus_y + math.sin(right) * length:.0f}Z'"
-            f" fill='{rng.choice(hues)}' fill-opacity='{rng.uniform(0.05, 0.19):.2f}'/>"
-        )
-    return (
-        f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'"
-        f">{''.join(parts)}</svg>"
-    )
-
-
-def build_arc_svg() -> str:
-    """참고 이미지의 케이블 같은 호 — 가는 선 위에 짧은 마디가 띄엄띄엄 얹힙니다."""
-    rng = random.Random(31)
-    width, height = 1400, 900
-    parts = []
-    for cx_r, cy_r, radius_r, start_deg, end_deg, opacity in (
-        (0.50, 1.28, 0.62, 196, 344, 0.30),
-        (0.50, 1.40, 0.80, 204, 336, 0.22),
-        (0.46, 1.16, 0.46, 210, 330, 0.18),
-    ):
-        cx, cy, radius = cx_r * width, cy_r * height, radius_r * width
-        x0 = cx + radius * math.cos(math.radians(start_deg))
-        y0 = cy + radius * math.sin(math.radians(start_deg))
-        x1 = cx + radius * math.cos(math.radians(end_deg))
-        y1 = cy + radius * math.sin(math.radians(end_deg))
-        path = f"M{x0:.0f} {y0:.0f}A{radius:.0f} {radius:.0f} 0 0 1 {x1:.0f} {y1:.0f}"
-        parts.append(
-            f"<path d='{path}' fill='none' stroke='%23b9c9b0'"
-            f" stroke-opacity='{opacity:.2f}' stroke-width='2.2'/>"
-        )
-        # 호를 따라 마디를 불규칙한 간격으로 얹습니다.
-        dashes, walked = [], rng.uniform(10, 60)
-        arc_length = math.radians(end_deg - start_deg) * radius
-        while walked < arc_length:
-            segment = rng.uniform(7, 20)
-            dashes += [f"{segment:.0f}", f"{rng.uniform(22, 64):.0f}"]
-            walked += segment + 40
-        parts.append(
-            f"<path d='{path}' fill='none' stroke='%23cfe0c2'"
-            f" stroke-opacity='{opacity + 0.2:.2f}' stroke-width='6'"
-            f" stroke-dasharray='{' '.join(dashes)}' stroke-linecap='butt'/>"
-        )
-    return (
-        f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'"
-        f">{''.join(parts)}</svg>"
-    )
+# ── 글리치 ────────────────────────────────────────────────────────
+# 아주 드문드문 어긋난 네모 조각을 섞어, 판이 매끈하기만 하지 않도록 합니다.
 
 
 def build_glitch_svg() -> str:
@@ -274,8 +209,6 @@ st.markdown(
     "@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');"
     f":root{{--vein:{_css_url(build_vein_svg())};"
     f"--vein-bar:{_css_url(build_bar_texture_svg())};"
-    f"--rays:{_css_url(build_ray_svg())};"
-    f"--arcs:{_css_url(build_arc_svg())};"
     f"--glitch:{_css_url(build_glitch_svg())};"
     f"--quatrefoil:{_css_url(build_quatrefoil_svg('%236fc7dd'))};"
     f"--quatrefoil-brass:{_css_url(build_quatrefoil_svg('%23d9b877', 1.3, 0.95))};"
@@ -293,13 +226,11 @@ st.markdown(
 st.markdown(
     """
     <style>
-        /* 배경은 아래쪽 한 점에서 빛이 터지고, 그 둘레로 청록·보라·분홍이 번지는
-           무지갯빛 화면입니다. 이 빛이 있어야 위에 얹은 유리판들이 무언가를 비칩니다. */
+        /* 배경은 순백을 기본으로 하고, 색이 있는 빛 번짐은 별도의 층(::after)에서
+           천천히 움직이게 만들어 화면이 완전히 정지해 보이지 않도록 합니다.
+           이 빛 번짐이 있어야 위에 얹은 유리판들이 '무언가를 비치게' 됩니다. */
         html, body, [data-testid="stAppViewContainer"] {
-            background:
-                radial-gradient(58% 42% at 50% 92%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 70%),
-                linear-gradient(180deg, #edf6fc 0%, #f7fbfe 58%, #ffffff 100%);
-            background-attachment: fixed;
+            background: #fdfeff;
             color: #20242b;
         }
         html, body, [data-testid="stAppViewContainer"], .block-container,
@@ -310,7 +241,8 @@ st.markdown(
         [data-testid="stHeader"] { background: transparent; }
         .block-container { padding-top: 3.2rem; padding-bottom: 4rem; max-width: 1180px; }
 
-        /* 청록·보라·분홍이 크게 번진 층. 천천히 떠다녀 화면이 멈춰 보이지 않게 합니다. */
+        /* 크게 번진 색 덩어리들이 천천히 떠다니는 배경 층 — 유리판 뒤에서 흐릿하게
+           비쳐 보이는 것이 이 층입니다. */
         [data-testid="stAppViewContainer"]::after {
             content: "";
             position: fixed;
@@ -319,26 +251,12 @@ st.markdown(
             z-index: 0;
             filter: blur(22px);
             background:
-                radial-gradient(40% 40% at 14% 12%, rgba(150, 225, 240, 0.5) 0%, transparent 70%),
-                radial-gradient(38% 40% at 86% 8%, rgba(205, 180, 242, 0.5) 0%, transparent 72%),
-                radial-gradient(36% 36% at 74% 50%, rgba(244, 178, 216, 0.4) 0%, transparent 72%),
-                radial-gradient(42% 38% at 20% 62%, rgba(168, 222, 240, 0.38) 0%, transparent 70%),
-                radial-gradient(30% 26% at 62% 86%, rgba(247, 236, 208, 0.42) 0%, transparent 72%);
+                radial-gradient(38% 42% at 10% 8%, rgba(158, 211, 238, 0.42) 0%, transparent 70%),
+                radial-gradient(30% 34% at 88% 4%, rgba(245, 220, 178, 0.55) 0%, transparent 72%),
+                radial-gradient(36% 42% at 74% 40%, rgba(178, 215, 238, 0.3) 0%, transparent 72%),
+                radial-gradient(42% 38% at 18% 70%, rgba(196, 222, 240, 0.32) 0%, transparent 70%),
+                radial-gradient(34% 30% at 58% 88%, rgba(230, 221, 240, 0.3) 0%, transparent 72%);
             animation: driftGlow 26s ease-in-out infinite alternate;
-        }
-        /* 아래쪽 빛에서 퍼지는 줄기와, 그 위를 지나가는 구슬 이어진 호. */
-        .sky-layer {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 0;
-            /* cover로 덮어야 그림의 가로세로 비율이 유지됩니다. 100% 100%로 늘이면
-               넓은 화면에서 빛줄기와 호가 좌우로 잡아당겨진 것처럼 보입니다. */
-            background-image: var(--rays), var(--arcs);
-            background-size: cover, cover;
-            background-repeat: no-repeat, no-repeat;
-            background-position: center bottom, center bottom;
-            opacity: 0.85;
         }
         /* 화면 전체에 아주 옅은 종이 질감(노이즈)을 얹어, 색면이 평평해 보이지 않게 합니다. */
         [data-testid="stAppViewContainer"]::before {
@@ -908,9 +826,6 @@ def render_guide(title: str, lines: list[str]) -> None:
 # 5. 화면 상단 — 제목과 날짜 고르기
 # ────────────────────────────────────────────────────────────────
 yesterday = get_yesterday_kst()
-
-# 빛줄기와 호를 담은 배경 층. 화면에 딱 한 번만 깔면 됩니다.
-st.markdown('<div class="sky-layer"></div>', unsafe_allow_html=True)
 
 st.markdown('<div class="app-title fade-in">박스오피스</div>', unsafe_allow_html=True)
 st.markdown(
