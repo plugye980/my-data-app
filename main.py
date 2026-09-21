@@ -1,17 +1,18 @@
 """
-어제의 박스오피스 순위를 보여주는 스트림릿(Streamlit) 앱입니다.
+날짜를 골라 그날의 박스오피스 순위를 보여주는 스트림릿(Streamlit) 앱입니다.
 
 - 코드에 API 키를 직접 적지 않고, 스트림릿의 "비밀 금고(secrets)"에서 불러옵니다.
   (배포 시 Streamlit Cloud 관리 화면의 Secrets에 KOBIS_KEY = "발급받은키" 형태로 넣어주세요.)
-- 조회 날짜는 오늘 날짜에서 하루를 뺀 "어제"를 매번 자동으로 계산합니다.
-  이때 서버의 시간대가 아니라 반드시 "한국 시간(KST)" 기준으로 계산합니다.
+- 조회 날짜는 달력에서 고릅니다. 고를 수 있는 가장 늦은 날짜는 "어제"인데,
+  오늘 치는 아직 집계 전이기 때문입니다. 이때 서버의 시간대가 아니라 반드시
+  "한국 시간(KST)" 기준으로 어제를 계산합니다.
 - 초보자도 흐름을 따라올 수 있도록 각 단계마다 한글 주석을 달아두었습니다.
 """
 
 import html
 import math
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pandas as pd
 import requests
@@ -29,7 +30,7 @@ KOBIS_URL = "https://www.kobis.or.kr/kobisopenapi/webservice/rest/boxoffice/sear
 KST = timezone(timedelta(hours=9))
 
 # 브라우저 탭 제목, 레이아웃 등 페이지의 기본 모양을 설정합니다.
-st.set_page_config(page_title="어제의 박스오피스", layout="wide")
+st.set_page_config(page_title="박스오피스", layout="wide")
 
 
 # ────────────────────────────────────────────────────────────────
@@ -201,7 +202,7 @@ def build_ray_svg() -> str:
         )
     return (
         f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'"
-        f" preserveAspectRatio='none'>{''.join(parts)}</svg>"
+        f">{''.join(parts)}</svg>"
     )
 
 
@@ -239,7 +240,7 @@ def build_arc_svg() -> str:
         )
     return (
         f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'"
-        f" preserveAspectRatio='none'>{''.join(parts)}</svg>"
+        f">{''.join(parts)}</svg>"
     )
 
 
@@ -331,8 +332,10 @@ st.markdown(
             inset: 0;
             pointer-events: none;
             z-index: 0;
+            /* cover로 덮어야 그림의 가로세로 비율이 유지됩니다. 100% 100%로 늘이면
+               넓은 화면에서 빛줄기와 호가 좌우로 잡아당겨진 것처럼 보입니다. */
             background-image: var(--rays), var(--arcs);
-            background-size: 100% 100%, 100% 100%;
+            background-size: cover, cover;
             background-repeat: no-repeat, no-repeat;
             background-position: center bottom, center bottom;
             opacity: 0.85;
@@ -429,6 +432,32 @@ st.markdown(
             background-image:
                 var(--quatrefoil-brass),
                 radial-gradient(closest-side, rgba(253, 254, 255, 0.97) 52%, rgba(253, 254, 255, 0) 100%);
+        }
+
+        /* 날짜 고르는 칸도 카드와 같은 유리판으로 맞춥니다. */
+        [data-testid="stDateInput"] label {
+            color: #7b86c4 !important;
+            font-size: 0.68rem !important;
+            font-weight: 500 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+        }
+        [data-testid="stDateInputField"] {
+            background: linear-gradient(155deg, rgba(255, 255, 255, 0.66) 0%, rgba(238, 240, 252, 0.46) 100%) !important;
+            -webkit-backdrop-filter: blur(14px) saturate(125%);
+            backdrop-filter: blur(14px) saturate(125%);
+            border: 2px solid rgba(255, 255, 255, 0.92) !important;
+            border-radius: 0 !important;
+            box-shadow:
+                0 0 0 1px rgba(163, 168, 224, 0.32),
+                0 6px 18px rgba(31, 61, 82, 0.07),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+        [data-testid="stDateInput"] .react-aria-DateField {
+            color: #16202c;
+            font-family: var(--font);
+            font-weight: 400;
+            letter-spacing: 0.04em;
         }
 
         .section-label {
@@ -784,6 +813,21 @@ st.markdown(
         .rank-table tbody tr.rank-first td { color: #16202c; font-weight: 400; }
         .rank-table tbody tr.rank-first td:first-child::before { transform: scaleY(1); }
 
+        /* 전날 대비 순위 증감 — 오르면 빨강, 내리면 파랑(증권 시세와 같은 방향). */
+        .rank-table td.change { text-align: center; width: 4.2rem; padding-left: 0; padding-right: 0; }
+        .rank-table th.change { text-align: center; }
+        .rank-up, .rank-down, .rank-same {
+            font-size: 0.72rem;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+        .rank-up { color: #d4455f; }
+        .rank-down { color: #3f7fd0; }
+        .rank-same { color: #b3bcc8; }
+        /* 누적 100만 관객을 넘긴 영화 표시 */
+        .trophy { margin-left: 0.4rem; font-size: 0.82rem; }
+
         /* 안내(가이드) 메시지 상자 — 카드와 같은 유리판이되, 왼쪽에 하늘색 띠를 둘러
            눈에 먼저 들어오게 합니다. 오른쪽 위 모서리는 비스듬히 잘랐습니다. */
         .guide-box {
@@ -819,19 +863,17 @@ st.markdown(
 
 
 # ────────────────────────────────────────────────────────────────
-# 3. 날짜 계산 — 항상 "한국 시간 기준 어제"를 자동으로 구합니다.
+# 3. 날짜 — 달력에서 고른 날짜를 씁니다. 고를 수 있는 가장 늦은 날짜는 '어제'인데,
+#    오늘 치 박스오피스는 아직 집계되지 않기 때문입니다.
 # ────────────────────────────────────────────────────────────────
-def get_yesterday_kst() -> str:
-    """지금 이 순간의 한국 시간을 구한 뒤, 하루 전 날짜를 'yyyymmdd' 형식 문자열로 반환합니다."""
-    now_kst = datetime.now(KST)
-    yesterday_kst = now_kst - timedelta(days=1)
-    return yesterday_kst.strftime("%Y%m%d")
+def get_yesterday_kst() -> date:
+    """지금 이 순간의 한국 시간을 기준으로 '어제' 날짜를 돌려줍니다."""
+    return (datetime.now(KST) - timedelta(days=1)).date()
 
 
-def format_date_korean(yyyymmdd: str) -> str:
-    """'20260916' 같은 문자열을 '2026년 09월 16일'처럼 사람이 읽기 좋은 한국어 형식으로 바꿉니다."""
-    dt = datetime.strptime(yyyymmdd, "%Y%m%d")
-    return dt.strftime("%Y년 %m월 %d일")
+def format_date_korean(day: date) -> str:
+    """날짜를 '2026년 09월 16일'처럼 사람이 읽기 좋은 한국어 형식으로 바꿉니다."""
+    return day.strftime("%Y년 %m월 %d일")
 
 
 # ────────────────────────────────────────────────────────────────
@@ -863,19 +905,33 @@ def render_guide(title: str, lines: list[str]) -> None:
 
 
 # ────────────────────────────────────────────────────────────────
-# 5. 화면 상단 — 제목과 날짜
+# 5. 화면 상단 — 제목과 날짜 고르기
 # ────────────────────────────────────────────────────────────────
-target_dt = get_yesterday_kst()
+yesterday = get_yesterday_kst()
 
 # 빛줄기와 호를 담은 배경 층. 화면에 딱 한 번만 깔면 됩니다.
 st.markdown('<div class="sky-layer"></div>', unsafe_allow_html=True)
 
-st.markdown('<div class="app-title fade-in">어제의 박스오피스</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-title fade-in">박스오피스</div>', unsafe_allow_html=True)
 st.markdown(
-    f'<div class="app-subtitle fade-in" style="animation-delay:0.06s">'
-    f'기준일 · {format_date_korean(target_dt)} (한국 시간 기준 어제)</div>',
+    '<div class="app-subtitle fade-in" style="animation-delay:0.06s">'
+    '날짜를 골라 그날의 극장 성적을 봅니다 · 오늘 치는 아직 집계 전이라 어제까지 고를 수 있어요</div>',
     unsafe_allow_html=True,
 )
+
+# 달력에서 날짜를 고릅니다. KOBIS가 일별 자료를 제공하는 2004년부터 어제까지입니다.
+picker_col, _ = st.columns([1, 3])
+with picker_col:
+    picked_day = st.date_input(
+        "조회 날짜",
+        value=yesterday,
+        min_value=date(2004, 1, 1),
+        max_value=yesterday,
+        format="YYYY-MM-DD",
+    )
+
+target_dt = picked_day.strftime("%Y%m%d")
+
 st.markdown('<div class="crack-divider hero fade-in"></div>', unsafe_allow_html=True)
 
 
@@ -935,10 +991,10 @@ if fault_info:
 daily_list = raw_data.get("boxOfficeResult", {}).get("dailyBoxOfficeList", [])
 if not daily_list:
     render_guide(
-        "표시할 박스오피스 데이터가 없습니다",
+        "그날은 아직 집계 전입니다",
         [
-            "해당 날짜의 박스오피스 집계가 아직 발표되지 않았을 수 있습니다. 잠시 후 다시 시도해주세요.",
-            "KOBIS 서버 점검 등으로 데이터 제공이 일시 중단되었을 수 있습니다.",
+            f"{format_date_korean(picked_day)}의 박스오피스가 아직 발표되지 않았습니다.",
+            "집계는 보통 다음 날 오전에 올라오니, 잠시 후 다시 시도하거나 다른 날짜를 골라보세요.",
         ],
     )
     st.stop()
@@ -953,6 +1009,9 @@ for item in daily_list:
     rows.append(
         {
             "순위": int(item["rank"]),
+            # rankInten은 전날 대비 순위 증감입니다. 양수면 순위가 오른 것,
+            # 음수면 내린 것, 0이면 그대로입니다.
+            "증감": int(item["rankInten"]),
             "영화명": item["movieNm"],
             "개봉일": item["openDt"],
             "관객수": int(item["audiCnt"]),
@@ -969,7 +1028,10 @@ df = pd.DataFrame(rows).sort_values("순위").reset_index(drop=True)
 # ────────────────────────────────────────────────────────────────
 top1 = df.iloc[0]
 
-st.markdown('<div class="section-label fade-in">오늘의 1위</div>', unsafe_allow_html=True)
+st.markdown(
+    f'<div class="section-label fade-in">{format_date_korean(picked_day)}  1위</div>',
+    unsafe_allow_html=True,
+)
 st.markdown(
     f'<div class="fade-in">'
     f'<span class="movie-headline">{html.escape(top1["영화명"])}</span>'
@@ -984,9 +1046,9 @@ st.markdown(f'<div class="movie-meta fade-in">개봉일 · {html.escape(top1["�
 card_col1, card_col2, card_col3 = st.columns([1.3, 1, 1])
 # 마지막 항목(hint)은 평소엔 숨어 있다가, 마우스를 올렸을 때만 나타나는 설명입니다.
 card_specs = [
-    (card_col1, "card-hero", "일일 관객수", top1["관객수"], "명", "어제 하루 동안 이 영화를 본 관객 수"),
-    (card_col2, "card-2", "누적 관객수", top1["누적관객"], "명", "개봉일부터 어제까지 쌓인 관객 수"),
-    (card_col3, "card-3", "상영 스크린수", top1["스크린수"], "개", "어제 이 영화를 상영한 스크린 수"),
+    (card_col1, "card-hero", "일일 관객수", top1["관객수"], "명", "고른 날짜 하루 동안 이 영화를 본 관객 수"),
+    (card_col2, "card-2", "누적 관객수", top1["누적관객"], "명", "개봉일부터 고른 날짜까지 쌓인 관객 수"),
+    (card_col3, "card-3", "상영 스크린수", top1["스크린수"], "개", "그날 이 영화를 상영한 스크린 수"),
 ]
 for col, card_class, label, value, unit, hint in card_specs:
     with col:
@@ -1085,21 +1147,38 @@ st.markdown('<div class="crack-divider scroll-reveal"></div>', unsafe_allow_html
 st.markdown('<div class="section-label scroll-reveal">전체 순위</div>', unsafe_allow_html=True)
 
 
+MILLION = 1_000_000
+
+
+def build_rank_change_html(change: int) -> str:
+    """전날 대비 순위 증감을 화살표로 만듭니다. 오르면 빨간 위 화살표,
+    내리면 파란 아래 화살표, 그대로면 가운뎃점만 둡니다."""
+    if change > 0:
+        return f'<span class="rank-up">▲ {change}</span>'
+    if change < 0:
+        return f'<span class="rank-down">▼ {abs(change)}</span>'
+    return '<span class="rank-same">·</span>'
+
+
 def build_rank_table_html(table_df: pd.DataFrame) -> str:
     """순위표 DataFrame을 직접 스타일을 입힌 HTML 표 문자열로 바꿉니다."""
+    columns = ["순위", "증감", "영화명", "개봉일", "관객수", "누적관객", "스크린수"]
     numeric_columns = {"순위", "관객수", "누적관객", "스크린수"}
     header_cells = "".join(
         f'<th class="{"num" if col in numeric_columns else ""}">{html.escape(col)}</th>'
-        for col in table_df.columns
+        for col in columns
     )
 
     body_rows = []
     for row in table_df.itertuples(index=False):
         row_class = "rank-first" if row.순위 == 1 else ""
+        # 누적 관객이 100만 명을 넘긴 영화에는 트로피를 붙입니다.
+        trophy = '<span class="trophy" title="누적 100만 관객 돌파">🏆</span>' if row.누적관객 >= MILLION else ""
         cells = (
             f'<td class="num">{row.순위}</td>'
-            f'<td>{html.escape(row.영화명)}</td>'
-            f'<td>{html.escape(row.개봉일)}</td>'
+            f'<td class="change">{build_rank_change_html(row.증감)}</td>'
+            f"<td>{html.escape(row.영화명)}{trophy}</td>"
+            f"<td>{html.escape(row.개봉일)}</td>"
             f'<td class="num">{row.관객수:,}</td>'
             f'<td class="num">{row.누적관객:,}</td>'
             f'<td class="num">{row.스크린수:,}</td>'
